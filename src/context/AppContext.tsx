@@ -29,45 +29,20 @@ export const availableMonths: MonthOption[] = [
   { value: "2027-01", label: "Januari 2027" },
 ];
 
-// Seed 16 items for current month (2026-11)
-const initialNovemberItems: BudgetPeriodItem[] = [
-  { id: "bi-1", period_id: "2026-11", cashflow_unit_id: "cf-1", budget_amount: 180000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGHEST", is_realized: false, sort_order: 1 },
-  { id: "bi-2", period_id: "2026-11", cashflow_unit_id: "cf-2", budget_amount: 200000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGHEST", is_realized: false, sort_order: 2 },
-  { id: "bi-3", period_id: "2026-11", cashflow_unit_id: "cf-3", budget_amount: 200000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 3 },
-  { id: "bi-4", period_id: "2026-11", cashflow_unit_id: "cf-4", budget_amount: 3000000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 4 },
-  { id: "bi-5", period_id: "2026-11", cashflow_unit_id: "cf-5", budget_amount: 1770000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 5 },
-  { id: "bi-6", period_id: "2026-11", cashflow_unit_id: "cf-6", budget_amount: 500000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "NORMAL", is_realized: false, sort_order: 6 },
-  { id: "bi-7", period_id: "2026-11", cashflow_unit_id: "cf-7", budget_amount: 50000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "NORMAL", is_realized: false, sort_order: 7 },
-  { id: "bi-8", period_id: "2026-11", cashflow_unit_id: "cf-8", budget_amount: 100000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 8 },
-  { id: "bi-9", period_id: "2026-11", cashflow_unit_id: "cf-9", budget_amount: 100000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 9 },
-  { id: "bi-10", period_id: "2026-11", cashflow_unit_id: "cf-10", budget_amount: 79000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 10 },
-  { id: "bi-11", period_id: "2026-11", cashflow_unit_id: "cf-11", budget_amount: 175000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 11 },
-  { id: "bi-12", period_id: "2026-11", cashflow_unit_id: "cf-12", budget_amount: 2000000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 12 },
-  { id: "bi-13", period_id: "2026-11", cashflow_unit_id: "cf-13", budget_amount: 450000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 13 },
-  { id: "bi-14", period_id: "2026-11", cashflow_unit_id: "cf-14", budget_amount: 30000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 14 },
-  { id: "bi-15", period_id: "2026-11", cashflow_unit_id: "cf-15", budget_amount: 260000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 15 },
-  { id: "bi-16", period_id: "2026-11", cashflow_unit_id: "cf-16", budget_amount: 885000, realization_amount: 0, projection_amount: 0, actual_amount: 0, urgency: "HIGH", is_realized: false, sort_order: 16 },
-];
+// Clean initial items - user creates budget items from master units
+const initialNovemberItems: BudgetPeriodItem[] = [];
 
 // Initial months storage map
 const initialMonthsData: Record<string, MonthPeriodData> = {
-  // Past month: LOCKED with actuals
+  // Past month: LOCKED
   "2026-10": {
     period_month: "2026-10",
     status: "LOCKED",
     salary_budget: 10000000,
     additional_budget: 0,
-    real_bca_balance: 3800000,
-    real_jago_balance: 500000,
-    items: initialNovemberItems.map((item) => ({ 
-      ...item, 
-      id: `oct-${item.id}`, 
-      period_id: "2026-10", 
-      realization_amount: item.budget_amount,
-      projection_amount: item.budget_amount,
-      actual_amount: item.budget_amount,
-      is_realized: true 
-    })),
+    real_bca_balance: 0,
+    real_jago_balance: 0,
+    items: [],
   },
   // Current month: ACTIVE
   "2026-11": {
@@ -75,19 +50,19 @@ const initialMonthsData: Record<string, MonthPeriodData> = {
     status: "ACTIVE",
     salary_budget: 10000000,
     additional_budget: 0,
-    real_bca_balance: 3976000,
-    real_jago_balance: 500000,
-    items: initialNovemberItems,
+    real_bca_balance: 0,
+    real_jago_balance: 0,
+    items: [],
   },
-  // Future months: PLANNING & EMPTY by default
+  // Future months: PLANNING
   "2026-12": {
     period_month: "2026-12",
     status: "PLANNING",
     salary_budget: 10000000,
-    additional_budget: 21000, // Sisa dana dari actual bulan lalu!
+    additional_budget: 0,
     real_bca_balance: 0,
     real_jago_balance: 0,
-    items: [], // Kosong! Siap di-plan
+    items: [],
   },
   "2027-01": {
     period_month: "2027-01",
@@ -96,7 +71,7 @@ const initialMonthsData: Record<string, MonthPeriodData> = {
     additional_budget: 0,
     real_bca_balance: 0,
     real_jago_balance: 0,
-    items: [], // Kosong
+    items: [],
   },
 };
 
@@ -173,31 +148,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const savedUnits = localStorage.getItem("scf_units");
         const savedCategories = localStorage.getItem("scf_categories");
         const savedWishlists = localStorage.getItem("scf_wishlists");
-        const savedTransactions = localStorage.getItem("scf_transactions");
-        const savedPeriods = localStorage.getItem("scf_periods_map");
         const savedMonth = localStorage.getItem("scf_selected_month");
+
+        // Cache-buster migration: wipe old dummy periods & transactions from client storage
+        const savedVersion = localStorage.getItem("scf_data_version");
+        if (savedVersion !== "scf_v2_clean") {
+          localStorage.removeItem("scf_periods_map");
+          localStorage.removeItem("scf_transactions");
+          localStorage.setItem("scf_data_version", "scf_v2_clean");
+        } else {
+          const savedPeriods = localStorage.getItem("scf_periods_map");
+          const savedTransactions = localStorage.getItem("scf_transactions");
+          if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
+          if (savedPeriods) {
+            setPeriodsMap(JSON.parse(savedPeriods));
+          }
+        }
 
         if (savedAssets) setAssets(JSON.parse(savedAssets));
         if (savedUnits) setCashflowUnits(JSON.parse(savedUnits));
         if (savedCategories) setCategories(JSON.parse(savedCategories));
         if (savedWishlists) setWishlists(JSON.parse(savedWishlists));
-        if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
-        if (savedPeriods) {
-          const parsed = JSON.parse(savedPeriods) as Record<string, MonthPeriodData>;
-          Object.values(parsed).forEach((p) => {
-            if (p.items) {
-              p.items.forEach((item) => {
-                if (item.realization_amount === undefined) {
-                  item.realization_amount = item.projection_amount ?? item.budget_amount;
-                }
-                if (item.projection_amount === undefined) {
-                  item.projection_amount = item.realization_amount;
-                }
-              });
-            }
-          });
-          setPeriodsMap(parsed);
-        }
         if (savedMonth) setSelectedMonth(savedMonth);
       } catch (e) {
         console.error("Failed to load local storage state", e);

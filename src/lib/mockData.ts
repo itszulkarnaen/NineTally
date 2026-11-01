@@ -150,31 +150,7 @@ export const initialPeriod: BudgetPeriod = {
   real_jago_balance: 500000,
 };
 
-export const initialBudgetItems: BudgetPeriodItem[] = [
-  // Holy Thing
-  { id: "bi-1", period_id: "per-2026-11", cashflow_unit_id: "cf-1", budget_amount: 180000, realization_amount: 180000, projection_amount: 180000, actual_amount: 180000, urgency: "HIGHEST", is_realized: false, sort_order: 1 },
-  { id: "bi-2", period_id: "per-2026-11", cashflow_unit_id: "cf-2", budget_amount: 200000, realization_amount: 200000, projection_amount: 200000, actual_amount: 200000, urgency: "HIGHEST", is_realized: false, sort_order: 2 },
-  { id: "bi-3", period_id: "per-2026-11", cashflow_unit_id: "cf-3", budget_amount: 200000, realization_amount: 200000, projection_amount: 200000, actual_amount: 200000, urgency: "HIGH", is_realized: false, sort_order: 3 },
-
-  // Liability
-  { id: "bi-4", period_id: "per-2026-11", cashflow_unit_id: "cf-4", budget_amount: 3000000, realization_amount: 3000000, projection_amount: 3000000, actual_amount: 3000000, urgency: "HIGH", is_realized: true, sort_order: 4 },
-  { id: "bi-5", period_id: "per-2026-11", cashflow_unit_id: "cf-5", budget_amount: 1770000, realization_amount: 1770000, projection_amount: 1770000, actual_amount: 1770000, urgency: "HIGH", is_realized: true, sort_order: 5 },
-  { id: "bi-6", period_id: "per-2026-11", cashflow_unit_id: "cf-6", budget_amount: 500000, realization_amount: 500000, projection_amount: 500000, actual_amount: 500000, urgency: "NORMAL", is_realized: true, sort_order: 6 },
-  { id: "bi-7", period_id: "per-2026-11", cashflow_unit_id: "cf-7", budget_amount: 50000, realization_amount: 50000, projection_amount: 50000, actual_amount: 50000, urgency: "NORMAL", is_realized: true, sort_order: 7 },
-  { id: "bi-8", period_id: "per-2026-11", cashflow_unit_id: "cf-8", budget_amount: 100000, realization_amount: 100000, projection_amount: 100000, actual_amount: 100000, urgency: "HIGH", is_realized: false, sort_order: 8 },
-  { id: "bi-9", period_id: "per-2026-11", cashflow_unit_id: "cf-9", budget_amount: 100000, realization_amount: 100000, projection_amount: 100000, actual_amount: 100000, urgency: "HIGH", is_realized: false, sort_order: 9 },
-  { id: "bi-10", period_id: "per-2026-11", cashflow_unit_id: "cf-10", budget_amount: 79000, realization_amount: 79000, projection_amount: 79000, actual_amount: 79000, urgency: "HIGH", is_realized: true, sort_order: 10 },
-
-  // Monthly Needs
-  { id: "bi-11", period_id: "per-2026-11", cashflow_unit_id: "cf-11", budget_amount: 175000, realization_amount: 175000, projection_amount: 175000, actual_amount: 175000, urgency: "HIGH", is_realized: true, sort_order: 11 },
-  { id: "bi-12", period_id: "per-2026-11", cashflow_unit_id: "cf-12", budget_amount: 2000000, realization_amount: 2000000, projection_amount: 2000000, actual_amount: 2000000, urgency: "HIGH", is_realized: false, sort_order: 12 },
-  { id: "bi-13", period_id: "per-2026-11", cashflow_unit_id: "cf-13", budget_amount: 450000, realization_amount: 450000, projection_amount: 450000, actual_amount: 450000, urgency: "HIGH", is_realized: true, sort_order: 13 },
-  { id: "bi-14", period_id: "per-2026-11", cashflow_unit_id: "cf-14", budget_amount: 30000, realization_amount: 30000, projection_amount: 30000, actual_amount: 30000, urgency: "HIGH", is_realized: false, sort_order: 14 },
-
-  // Akomodasi
-  { id: "bi-15", period_id: "per-2026-11", cashflow_unit_id: "cf-15", budget_amount: 260000, realization_amount: 260000, projection_amount: 260000, actual_amount: 260000, urgency: "HIGH", is_realized: false, sort_order: 15 },
-  { id: "bi-16", period_id: "per-2026-11", cashflow_unit_id: "cf-16", budget_amount: 885000, realization_amount: 885000, projection_amount: 885000, actual_amount: 885000, urgency: "HIGH", is_realized: false, sort_order: 16 },
-];
+export const initialBudgetItems: BudgetPeriodItem[] = [];
 
 export const initialWishlists: WishlistItem[] = [
   { id: "wl-1", item_name: "Rice Cooker", target_amount: 1000000, priority: 1, is_bought: false },
@@ -184,69 +160,5 @@ export const initialWishlists: WishlistItem[] = [
   { id: "wl-5", item_name: "Kompor", target_amount: 2000000, priority: 5, is_bought: false },
 ];
 
-export const initialTransactions: CashflowTransaction[] = [
-  {
-    id: "tx-1",
-    period_id: "2026-11",
-    cashflow_unit_id: "cf-4",
-    amount: 3000000,
-    date: "2026-11-01",
-    notes: "Transfer bulanan Mandiri",
-    created_at: "2026-11-01T08:30:00Z",
-  },
-  {
-    id: "tx-2",
-    period_id: "2026-11",
-    cashflow_unit_id: "cf-5",
-    amount: 1770000,
-    date: "2026-11-01",
-    notes: "Sewa Kos November",
-    created_at: "2026-11-01T09:00:00Z",
-  },
-  {
-    id: "tx-3",
-    period_id: "2026-11",
-    cashflow_unit_id: "cf-6",
-    amount: 500000,
-    date: "2026-11-02",
-    notes: "Tagihan IndiHome & WiFi",
-    created_at: "2026-11-02T10:15:00Z",
-  },
-  {
-    id: "tx-4",
-    period_id: "2026-11",
-    cashflow_unit_id: "cf-10",
-    amount: 79000,
-    date: "2026-11-02",
-    notes: "Netflix Subscription",
-    created_at: "2026-11-02T14:20:00Z",
-  },
-  {
-    id: "tx-5",
-    period_id: "2026-11",
-    cashflow_unit_id: "cf-12",
-    amount: 85000,
-    date: "2026-11-01",
-    notes: "Makan Siang Resto",
-    created_at: "2026-11-01T12:30:00Z",
-  },
-  {
-    id: "tx-6",
-    period_id: "2026-11",
-    cashflow_unit_id: "cf-12",
-    amount: 65000,
-    date: "2026-11-02",
-    notes: "Kopi & snack sore",
-    created_at: "2026-11-02T16:00:00Z",
-  },
-  {
-    id: "tx-7",
-    period_id: "2026-11",
-    cashflow_unit_id: "cf-15",
-    amount: 50000,
-    date: "2026-11-01",
-    notes: "Bensin motor Shell",
-    created_at: "2026-11-01T07:45:00Z",
-  },
-];
+export const initialTransactions: CashflowTransaction[] = [];
 
