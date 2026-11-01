@@ -28,7 +28,8 @@ import {
   Eye,
   EyeOff,
   Landmark,
-  ArrowUpRight
+  ArrowUpRight,
+  LogOut
 } from "lucide-react";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
@@ -229,6 +230,13 @@ export default function MobilePage() {
     setIsTxModalOpen(true);
   };
 
+  const handleLogout = async () => {
+    if (window.confirm("Yakin mau keluar dari NineTally?")) {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    }
+  };
+
   const handleSaveTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (txNominal <= 0 || !txUnitId || isLocked) return;
@@ -277,7 +285,7 @@ export default function MobilePage() {
             />
           </div>
           <div>
-            <h1 className="text-xs font-bold text-[#242921]">Self Cash Flow</h1>
+            <h1 className="text-xs font-bold text-[#242921]">NineTally</h1>
             <p className="text-[10px] text-[#666E61]">Mobile PWA</p>
           </div>
         </div>
@@ -295,6 +303,13 @@ export default function MobilePage() {
             {isLocked ? <Lock className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
             {currentMonthData.status}
           </span>
+          <button
+            onClick={handleLogout}
+            title="Keluar / Logout"
+            className="p-1.5 rounded-xl bg-[#EAE2D6] hover:bg-rose-100 hover:text-rose-700 transition text-[#666E61]"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

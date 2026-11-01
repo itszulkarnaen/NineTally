@@ -23,7 +23,8 @@ import {
   Check,
   Copy,
   Sparkles,
-  Tags
+  Tags,
+  LogOut
 } from "lucide-react";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
@@ -69,6 +70,13 @@ export default function WebPage() {
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [isCopiedToast, setIsCopiedToast] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleLogout = async () => {
+    if (window.confirm("Yakin mau keluar dari NineTally?")) {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    }
+  };
 
   // Sync income inputs when month changes
   React.useEffect(() => {
@@ -333,6 +341,15 @@ export default function WebPage() {
             </div>
             <ArrowRight className="w-3.5 h-3.5 text-[#666E61]" />
           </Link>
+          <button
+            onClick={handleLogout}
+            className="w-full mt-2 flex items-center justify-between p-2.5 rounded-xl text-rose-700 hover:bg-rose-50 transition text-xs font-semibold"
+          >
+            <div className="flex items-center gap-2">
+              <LogOut className="w-4 h-4 text-rose-600" />
+              <span>Keluar / Logout</span>
+            </div>
+          </button>
         </div>
       </aside>
 
