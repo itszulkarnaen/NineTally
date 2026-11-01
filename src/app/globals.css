@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --canvas: #EAE2D6;       /* Warm Sand / Oatmeal Canvas */
+  --canvas: #E3F2FD;       /* Soft Light Blue Canvas */
   --surface: #FFFFFF;      /* Pure White Surface Cards */
   --muted: #EEEEEE;        /* Soft Light Grey / Borders */
-  --sage: #8B9A6E;         /* Sage Olive Green Accent */
-  --sage-hover: #7A895F;   /* Darker Sage */
-  --sage-light: #E8EDE0;   /* Light Sage Tint */
-  --text-main: #242921;    /* Deep Charcoal Olive */
+  --primary-blue: #2196F3; /* Primary Vibrant Blue Accent */
+  --blue-hover: #1E88E5;   /* Darker Blue Hover */
+  --blue-light: #90CAF9;   /* Secondary Light Blue Accent */
+  --text-main: #242921;    /* Deep Charcoal Text */
   --text-muted: #666E61;   /* Muted Text */
 }
 

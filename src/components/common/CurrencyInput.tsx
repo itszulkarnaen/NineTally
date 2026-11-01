@@ -64,7 +64,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
         value={displayValue}
         onChange={handleChange}
         placeholder={placeholder}
-        className={`w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] focus:border-[#8B9A6E] focus:outline-none rounded-xl py-1.5 text-xs font-bold text-[#242921] transition ${
+        className={`w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] focus:border-[#2196F3] focus:outline-none rounded-xl py-1.5 text-xs font-bold text-[#242921] transition ${
           showPrefix ? "pl-8 pr-3" : "px-3"
         } ${textAlign === "right" ? "text-right" : "text-left"} ${className}`}
       />

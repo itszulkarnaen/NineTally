@@ -87,7 +87,7 @@ export const MonthPicker: React.FC<MonthPickerProps> = ({ value, onChange, class
         <button
           onClick={() => handleStepMonth(-1)}
           title="Bulan Sebelumnya"
-          className="p-1.5 rounded-xl hover:bg-[#EAE2D6]/40 text-[#666E61] hover:text-[#242921] transition"
+          className="p-1.5 rounded-xl hover:bg-[#E3F2FD]/60 text-[#666E61] hover:text-[#242921] transition"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -98,14 +98,14 @@ export const MonthPicker: React.FC<MonthPickerProps> = ({ value, onChange, class
             setBrowseYear(selectedYear);
             setIsOpen(!isOpen);
           }}
-          className="flex items-center gap-2 px-3 py-1 rounded-xl hover:bg-[#EAE2D6]/30 transition group"
+          className="flex items-center gap-2 px-3 py-1 rounded-xl hover:bg-[#E3F2FD]/50 transition group"
         >
-          <Calendar className="w-3.5 h-3.5 text-[#8B9A6E]" />
+          <Calendar className="w-3.5 h-3.5 text-[#2196F3]" />
           <span className="text-xs font-bold text-[#242921]">
             {MONTH_NAMES[selectedMonthIndex]} {selectedYear}
           </span>
           {isCurrentMonth && (
-            <span className="text-[10px] bg-[#8B9A6E]/15 text-[#8B9A6E] font-bold px-1.5 py-0.2 rounded-full">
+            <span className="text-[10px] bg-[#2196F3]/15 text-[#2196F3] font-bold px-1.5 py-0.2 rounded-full">
               Bulan Berjalan
             </span>
           )}
@@ -116,7 +116,7 @@ export const MonthPicker: React.FC<MonthPickerProps> = ({ value, onChange, class
         <button
           onClick={() => handleStepMonth(1)}
           title="Bulan Berikutnya"
-          className="p-1.5 rounded-xl hover:bg-[#EAE2D6]/40 text-[#666E61] hover:text-[#242921] transition"
+          className="p-1.5 rounded-xl hover:bg-[#E3F2FD]/60 text-[#666E61] hover:text-[#242921] transition"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -129,14 +129,14 @@ export const MonthPicker: React.FC<MonthPickerProps> = ({ value, onChange, class
           <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
             <button
               onClick={() => setBrowseYear((prev) => prev - 1)}
-              className="p-1.5 rounded-lg hover:bg-[#EAE2D6]/50 text-[#666E61] hover:text-[#242921] transition"
+              className="p-1.5 rounded-lg hover:bg-[#E3F2FD]/60 text-[#666E61] hover:text-[#242921] transition"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <span className="font-bold text-sm text-[#242921]">{browseYear}</span>
             <button
               onClick={() => setBrowseYear((prev) => prev + 1)}
-              className="p-1.5 rounded-lg hover:bg-[#EAE2D6]/50 text-[#666E61] hover:text-[#242921] transition"
+              className="p-1.5 rounded-lg hover:bg-[#E3F2FD]/60 text-[#666E61] hover:text-[#242921] transition"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -154,13 +154,13 @@ export const MonthPicker: React.FC<MonthPickerProps> = ({ value, onChange, class
                   onClick={() => handleSelectMonth(idx)}
                   className={`py-2 px-1 text-xs font-semibold rounded-xl transition relative flex flex-col items-center justify-center ${
                     isSelected
-                      ? "bg-[#8B9A6E] text-white shadow-xs"
-                      : "text-[#242921] hover:bg-[#EAE2D6]/40"
+                      ? "bg-[#2196F3] text-white shadow-xs"
+                      : "text-[#242921] hover:bg-[#E3F2FD]/60"
                   }`}
                 >
                   <span>{name}</span>
                   {isToday && !isSelected && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#8B9A6E] mt-0.5" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#2196F3] mt-0.5" />
                   )}
                 </button>
               );
@@ -171,7 +171,7 @@ export const MonthPicker: React.FC<MonthPickerProps> = ({ value, onChange, class
           <div className="border-t border-[#EEEEEE] pt-2.5 flex items-center justify-between">
             <button
               onClick={handleJumpToCurrent}
-              className="text-[11px] font-bold text-[#8B9A6E] hover:underline"
+              className="text-[11px] font-bold text-[#2196F3] hover:underline"
             >
               Ke Bulan Berjalan
             </button>

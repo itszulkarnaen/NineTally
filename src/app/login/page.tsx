@@ -42,7 +42,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#EAE2D6] flex items-center justify-center p-4 text-[#242921]">
+    <div className="min-h-screen bg-[#E3F2FD] flex items-center justify-center p-4 text-[#242921]">
       <div className="w-full max-w-sm bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
         {/* App Branding */}
         <div className="text-center space-y-2">
@@ -82,7 +82,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="nama@email.com"
-              className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3.5 py-2.5 text-xs font-medium text-[#242921] focus:outline-none focus:border-[#8B9A6E] focus:ring-1 focus:ring-[#8B9A6E] transition"
+              className="w-full bg-[#E3F2FD]/40 border border-[#EEEEEE] rounded-xl px-3.5 py-2.5 text-xs font-medium text-[#242921] focus:outline-none focus:border-[#2196F3] focus:ring-1 focus:ring-[#2196F3] transition"
             />
           </div>
 
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl pl-3.5 pr-10 py-2.5 text-xs font-medium text-[#242921] focus:outline-none focus:border-[#8B9A6E] focus:ring-1 focus:ring-[#8B9A6E] transition"
+                className="w-full bg-[#E3F2FD]/40 border border-[#EEEEEE] rounded-xl pl-3.5 pr-10 py-2.5 text-xs font-medium text-[#242921] focus:outline-none focus:border-[#2196F3] focus:ring-1 focus:ring-[#2196F3] transition"
               />
               <button
                 type="button"
@@ -112,7 +112,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#8B9A6E] hover:bg-[#7A895F] active:scale-[0.98] text-white font-bold py-3 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+            className="w-full bg-[#2196F3] hover:bg-[#1E88E5] active:scale-[0.98] text-white font-bold py-3 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
           >
             {isLoading ? (
               <>
@@ -127,7 +127,7 @@ export default function LoginPage() {
 
         {/* Security Footer */}
         <div className="pt-2 border-t border-[#EEEEEE] flex items-center justify-center gap-1.5 text-[10px] text-[#666E61]">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#8B9A6E]" />
+          <ShieldCheck className="w-3.5 h-3.5 text-[#2196F3]" />
           <span>Single-User Private Cloud</span>
         </div>
       </div>

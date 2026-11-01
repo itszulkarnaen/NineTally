@@ -78,7 +78,7 @@ export default function WebPage() {
   // Form state for creating Master Category
   const [catName, setCatName] = useState("");
   const [catCode, setCatCode] = useState("");
-  const [catColor, setCatColor] = useState("#8B9A6E");
+  const [catColor, setCatColor] = useState("#2196F3");
   const [catDesc, setCatDesc] = useState("");
 
   // Local state for income numbers
@@ -183,7 +183,7 @@ export default function WebPage() {
     createCategory({
       code,
       name: catName.trim(),
-      color: catColor || "#8B9A6E",
+      color: catColor || "#2196F3",
       description: catDesc.trim() || undefined,
       sort_order: categories.length + 1,
     });
@@ -322,7 +322,7 @@ export default function WebPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#EAE2D6] flex text-[#242921]">
+    <div className="min-h-screen bg-[#E3F2FD] flex text-[#242921]">
       {/* 1. SIDEBAR NAVIGATION */}
       <aside className="w-64 bg-[#FFFFFF] border-r border-[#EEEEEE] flex flex-col justify-between shrink-0 p-5 shadow-sm">
         <div className="space-y-6">
@@ -347,7 +347,7 @@ export default function WebPage() {
           </div>
 
           {/* Simple Month Status Badge & Lock/Unlock Trigger */}
-          <div className="p-3.5 bg-[#EAE2D6]/40 rounded-2xl border border-[#EEEEEE] space-y-2">
+          <div className="p-3.5 bg-[#E3F2FD]/40 rounded-2xl border border-[#EEEEEE] space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-[#666E61] font-medium">Bulan:</span>
               <span className="font-bold text-[#242921]">{selectedMonth}</span>
@@ -359,7 +359,7 @@ export default function WebPage() {
                   isLocked
                     ? "bg-amber-100 text-amber-800 border border-amber-200"
                     : currentMonthData.status === "ACTIVE"
-                    ? "bg-[#8B9A6E]/15 text-[#8B9A6E] border border-[#8B9A6E]/30"
+                    ? "bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30"
                     : "bg-blue-100 text-blue-800 border border-blue-200"
                 }`}
               >
@@ -382,7 +382,7 @@ export default function WebPage() {
                 onClick={lockCurrentMonth}
                 className="w-full mt-1 py-1.5 px-2 bg-[#FFFFFF] hover:bg-[#EEEEEE] text-[#242921] text-[11px] font-medium rounded-xl border border-[#EEEEEE] transition flex items-center justify-center gap-1.5 shadow-xs"
               >
-                <Lock className="w-3.5 h-3.5 text-[#8B9A6E]" />
+                <Lock className="w-3.5 h-3.5 text-[#2196F3]" />
                 <span>Kunci Periode</span>
               </button>
             )}
@@ -397,7 +397,7 @@ export default function WebPage() {
               onClick={() => setActiveTab("budget")}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
                 activeTab === "budget"
-                  ? "bg-[#8B9A6E] text-white shadow-xs"
+                  ? "bg-[#2196F3] text-white shadow-xs"
                   : "text-[#666E61] hover:bg-[#EEEEEE] hover:text-[#242921]"
               }`}
             >
@@ -408,7 +408,7 @@ export default function WebPage() {
               onClick={() => setActiveTab("realization")}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
                 activeTab === "realization"
-                  ? "bg-[#8B9A6E] text-white shadow-xs"
+                  ? "bg-[#2196F3] text-white shadow-xs"
                   : "text-[#666E61] hover:bg-[#EEEEEE] hover:text-[#242921]"
               }`}
             >
@@ -419,7 +419,7 @@ export default function WebPage() {
               onClick={() => setActiveTab("actual")}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
                 activeTab === "actual"
-                  ? "bg-[#8B9A6E] text-white shadow-xs"
+                  ? "bg-[#2196F3] text-white shadow-xs"
                   : "text-[#666E61] hover:bg-[#EEEEEE] hover:text-[#242921]"
               }`}
             >
@@ -437,7 +437,7 @@ export default function WebPage() {
               onClick={() => setActiveTab("cashflow-items")}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
                 activeTab === "cashflow-items"
-                  ? "bg-[#8B9A6E] text-white shadow-xs"
+                  ? "bg-[#2196F3] text-white shadow-xs"
                   : "text-[#666E61] hover:bg-[#EEEEEE] hover:text-[#242921]"
               }`}
             >
@@ -448,7 +448,7 @@ export default function WebPage() {
               onClick={() => setActiveTab("categories")}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
                 activeTab === "categories"
-                  ? "bg-[#8B9A6E] text-white shadow-xs"
+                  ? "bg-[#2196F3] text-white shadow-xs"
                   : "text-[#666E61] hover:bg-[#EEEEEE] hover:text-[#242921]"
               }`}
             >
@@ -459,7 +459,7 @@ export default function WebPage() {
               onClick={() => setActiveTab("assets")}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
                 activeTab === "assets"
-                  ? "bg-[#8B9A6E] text-white shadow-xs"
+                  ? "bg-[#2196F3] text-white shadow-xs"
                   : "text-[#666E61] hover:bg-[#EEEEEE] hover:text-[#242921]"
               }`}
             >
@@ -473,10 +473,10 @@ export default function WebPage() {
         <div className="pt-4 border-t border-[#EEEEEE]">
           <Link
             href="/mobile"
-            className="flex items-center justify-between p-2.5 rounded-xl bg-[#EAE2D6]/40 hover:bg-[#EAE2D6] transition text-xs font-semibold text-[#242921]"
+            className="flex items-center justify-between p-2.5 rounded-xl bg-[#E3F2FD]/40 hover:bg-[#E3F2FD] transition text-xs font-semibold text-[#242921]"
           >
             <div className="flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-[#8B9A6E]" />
+              <Smartphone className="w-4 h-4 text-[#2196F3]" />
               <span>Buka Mobile PWA</span>
             </div>
             <ArrowRight className="w-3.5 h-3.5 text-[#666E61]" />
@@ -514,7 +514,7 @@ export default function WebPage() {
                     isLocked
                       ? "bg-amber-100 text-amber-800 border border-amber-200"
                       : currentMonthData.status === "ACTIVE"
-                      ? "bg-[#8B9A6E]/15 text-[#8B9A6E] border border-[#8B9A6E]/30"
+                      ? "bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30"
                       : "bg-blue-100 text-blue-800 border border-blue-200"
                   }`}
                 >
@@ -558,7 +558,7 @@ export default function WebPage() {
                   {/* PROMINENT SAVE BUDGET BUTTON */}
                   <div className="flex items-center gap-2">
                     {isSavedToast && (
-                      <span className="text-xs font-semibold text-[#8B9A6E] flex items-center gap-1 bg-[#8B9A6E]/15 px-3 py-1.5 rounded-xl border border-[#8B9A6E]/30 animate-in fade-in">
+                      <span className="text-xs font-semibold text-[#2196F3] flex items-center gap-1 bg-[#2196F3]/15 px-3 py-1.5 rounded-xl border border-[#2196F3]/30 animate-in fade-in">
                         <Check className="w-3.5 h-3.5" />
                         Tersimpan!
                       </span>
@@ -575,7 +575,7 @@ export default function WebPage() {
                       className={`px-4 py-2 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs ${
                         isLocked
                           ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                          : "bg-[#8B9A6E] hover:bg-[#7A895F] text-white"
+                          : "bg-[#2196F3] hover:bg-[#1E88E5] text-white"
                       }`}
                     >
                       <Save className="w-4 h-4" />
@@ -613,7 +613,7 @@ export default function WebPage() {
                   </div>
 
                   {/* Calculated Metric 1: Total Alokasi Rencana */}
-                  <div className="bg-[#EAE2D6]/30 rounded-2xl p-3 border border-[#EEEEEE] flex flex-col justify-between">
+                  <div className="bg-[#E3F2FD]/30 rounded-2xl p-3 border border-[#EEEEEE] flex flex-col justify-between">
                     <span className="text-[10px] text-[#666E61] font-medium block">Total Rencana Dialokasikan</span>
                     <span className="text-sm font-bold text-[#242921] mt-1">{formatRupiah(totalBudgetPlanned)}</span>
                   </div>
@@ -622,10 +622,10 @@ export default function WebPage() {
                   <div className={`rounded-2xl p-3 border flex flex-col justify-between ${
                     remainingToAllocate < 0
                       ? "bg-rose-50 border-rose-200"
-                      : "bg-[#8B9A6E]/10 border-[#8B9A6E]/20"
+                      : "bg-[#2196F3]/10 border-[#2196F3]/20"
                   }`}>
                     <span className="text-[10px] text-[#666E61] font-medium block">Sisa Belum Dialokasikan</span>
-                    <span className={`text-sm font-bold mt-1 ${remainingToAllocate < 0 ? "text-rose-600" : "text-[#8B9A6E]"}`}>
+                    <span className={`text-sm font-bold mt-1 ${remainingToAllocate < 0 ? "text-rose-600" : "text-[#2196F3]"}`}>
                       {formatRupiah(remainingToAllocate)}
                     </span>
                   </div>
@@ -641,7 +641,7 @@ export default function WebPage() {
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   className={`lg:col-span-8 bg-[#FFFFFF] border rounded-3xl overflow-hidden shadow-xs transition-colors ${
-                    isDragOver ? "border-dashed border-2 border-[#8B9A6E] bg-[#8B9A6E]/5" : "border-[#EEEEEE]"
+                    isDragOver ? "border-dashed border-2 border-[#2196F3] bg-[#2196F3]/5" : "border-[#EEEEEE]"
                   }`}
                 >
                   <div className="p-5 border-b border-[#EEEEEE] flex items-center justify-between">
@@ -661,10 +661,10 @@ export default function WebPage() {
                       {!isLocked && budgetItems.length === 0 && (
                         <button
                           onClick={handleCopyPreviousMonth}
-                          className="px-3 py-1.5 rounded-xl bg-[#EAE2D6]/50 hover:bg-[#EAE2D6] text-[#242921] text-xs font-semibold border border-[#EEEEEE] transition flex items-center gap-1.5 shadow-xs"
+                          className="px-3 py-1.5 rounded-xl bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] text-[#242921] text-xs font-semibold border border-[#EEEEEE] transition flex items-center gap-1.5 shadow-xs"
                           title="Salin seluruh cashflow item dan nominal dari bulan sebelumnya"
                         >
-                          <Copy className="w-3.5 h-3.5 text-[#8B9A6E]" />
+                          <Copy className="w-3.5 h-3.5 text-[#2196F3]" />
                           <span>Salin Item Bulan Lalu</span>
                         </button>
                       )}
@@ -675,7 +675,7 @@ export default function WebPage() {
                           Terkunci
                         </span>
                       ) : (
-                        <span className="text-xs font-medium text-[#8B9A6E] bg-[#8B9A6E]/15 px-3 py-1 rounded-full border border-[#8B9A6E]/30 flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-[#2196F3] bg-[#2196F3]/15 px-3 py-1 rounded-full border border-[#2196F3]/30 flex items-center gap-1.5">
                           <Sliders className="w-3.5 h-3.5" />
                           Mode Edit
                         </span>
@@ -686,7 +686,7 @@ export default function WebPage() {
                   {/* Empty state if no items in this month */}
                   {budgetItems.length === 0 ? (
                     <div className="p-12 text-center space-y-4">
-                      <div className="w-14 h-14 rounded-2xl bg-[#EAE2D6] mx-auto flex items-center justify-center text-[#666E61]">
+                      <div className="w-14 h-14 rounded-2xl bg-[#E3F2FD] mx-auto flex items-center justify-center text-[#666E61]">
                         <Sliders className="w-7 h-7" />
                       </div>
                       <div>
@@ -699,7 +699,7 @@ export default function WebPage() {
                       <button
                         onClick={handleCopyPreviousMonth}
                         disabled={isLocked}
-                        className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2"
+                        className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2"
                       >
                         <Copy className="w-4 h-4" />
                         <span>Salin Seluruh Cashflow Item Bulan Lalu ({selectedMonth})</span>
@@ -710,14 +710,14 @@ export default function WebPage() {
                       {budgetItems.map((item) => {
                         const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
                         return (
-                          <div key={item.id} className="p-4 flex items-center justify-between gap-4 hover:bg-[#EAE2D6]/20 transition">
+                          <div key={item.id} className="p-4 flex items-center justify-between gap-4 hover:bg-[#E3F2FD]/20 transition">
                             <div className="flex items-center gap-3">
                               <GripVertical className="w-4 h-4 text-slate-300" />
                               <div>
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-xs text-[#242921]">{unit?.name}</span>
                                   <span className="text-[10px] text-[#666E61]">({unit?.code})</span>
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-[#EAE2D6] text-[#666E61] font-semibold">
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-[#E3F2FD] text-[#666E61] font-semibold">
                                     {unit?.category || unit?.unit_type}
                                   </span>
                                 </div>
@@ -762,7 +762,7 @@ export default function WebPage() {
                     <h3 className="text-xs font-bold uppercase tracking-wider text-[#242921]">
                       Available Master Units
                     </h3>
-                    <span className="text-[10px] font-semibold bg-[#EAE2D6] px-2 py-0.5 rounded-full text-[#666E61]">
+                    <span className="text-[10px] font-semibold bg-[#E3F2FD] px-2 py-0.5 rounded-full text-[#666E61]">
                       {availableUnits.length} Siap Pakai
                     </span>
                   </div>
@@ -786,7 +786,7 @@ export default function WebPage() {
                             onDragStart={(e) => {
                               e.dataTransfer.setData("text/plain", unit.id);
                             }}
-                            className={`p-3 bg-[#EAE2D6]/20 border border-[#EEEEEE] hover:border-[#8B9A6E]/50 rounded-2xl flex items-center justify-between gap-2 transition ${
+                            className={`p-3 bg-[#E3F2FD]/20 border border-[#EEEEEE] hover:border-[#2196F3]/50 rounded-2xl flex items-center justify-between gap-2 transition ${
                               isLocked ? "cursor-not-allowed opacity-60" : "cursor-grab active:cursor-grabbing hover:shadow-xs"
                             }`}
                           >
@@ -802,7 +802,7 @@ export default function WebPage() {
                                     {unit.category || unit.unit_type}
                                   </span>
                                   {prevNominal !== null && (
-                                    <span className="text-[9px] font-bold text-[#8B9A6E] bg-[#8B9A6E]/10 px-1.5 py-0.2 rounded">
+                                    <span className="text-[9px] font-bold text-[#2196F3] bg-[#2196F3]/10 px-1.5 py-0.2 rounded">
                                       {formatRupiah(prevNominal)}
                                     </span>
                                   )}
@@ -813,7 +813,7 @@ export default function WebPage() {
                             <button
                               onClick={() => addItemToCurrentMonth(unit.id)}
                               disabled={isLocked}
-                              className="px-2.5 py-1 text-xs font-semibold rounded-xl bg-[#8B9A6E] hover:bg-[#7A895F] text-white transition flex items-center gap-1 shadow-2xs"
+                              className="px-2.5 py-1 text-xs font-semibold rounded-xl bg-[#2196F3] hover:bg-[#1E88E5] text-white transition flex items-center gap-1 shadow-2xs"
                               title="Tambah ke anggaran (nominal bulan lalu)"
                             >
                               <Plus className="w-3.5 h-3.5" />
@@ -858,10 +858,10 @@ export default function WebPage() {
                   {/* Metric 2: Realization Running */}
                   <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-5 shadow-xs flex flex-col justify-between">
                     <span className="text-[11px] text-[#666E61] font-semibold block">Total Realisasi Berjalan</span>
-                    <span className="text-lg font-bold text-[#8B9A6E] mt-2">{formatRupiah(totalRealization)}</span>
+                    <span className="text-lg font-bold text-[#2196F3] mt-2">{formatRupiah(totalRealization)}</span>
                     <div className="mt-1 flex items-center gap-1.5 text-[10px]">
                       <span className="font-semibold text-[#666E61]">Variansi:</span>
-                      <span className={`font-bold ${netDifference > 0 ? "text-rose-600" : netDifference < 0 ? "text-[#8B9A6E]" : "text-[#666E61]"}`}>
+                      <span className={`font-bold ${netDifference > 0 ? "text-rose-600" : netDifference < 0 ? "text-[#2196F3]" : "text-[#666E61]"}`}>
                         {netDifference > 0 ? `+${formatRupiah(netDifference)} (Over)` : netDifference < 0 ? `${formatRupiah(netDifference)} (Hemat)` : "Sesuai"}
                       </span>
                     </div>
@@ -882,11 +882,11 @@ export default function WebPage() {
                   <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-5 shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] text-[#666E61] font-semibold block">Status Pembayaran</span>
-                      <span className="text-xs font-bold text-[#8B9A6E]">{progressPct}%</span>
+                      <span className="text-xs font-bold text-[#2196F3]">{progressPct}%</span>
                     </div>
                     <div className="w-full bg-[#EEEEEE] h-2 rounded-full mt-2 overflow-hidden">
                       <div 
-                        className="bg-[#8B9A6E] h-full rounded-full transition-all duration-300" 
+                        className="bg-[#2196F3] h-full rounded-full transition-all duration-300" 
                         style={{ width: `${progressPct}%` }}
                       />
                     </div>
@@ -909,7 +909,7 @@ export default function WebPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#666E61] bg-[#EAE2D6]/40 px-3 py-1 rounded-xl border border-[#EEEEEE]">
+                      <span className="text-xs text-[#666E61] bg-[#E3F2FD]/40 px-3 py-1 rounded-xl border border-[#EEEEEE]">
                         Sinkron real-time dengan Mobile PWA
                       </span>
                     </div>
@@ -940,13 +940,13 @@ export default function WebPage() {
                             const diff = currentRealization - item.budget_amount;
 
                             return (
-                              <tr key={item.id} className="hover:bg-[#EAE2D6]/20 transition">
+                              <tr key={item.id} className="hover:bg-[#E3F2FD]/20 transition">
                                 <td className="py-3 px-3">
                                   <div className="font-semibold text-xs text-[#242921]">{unit?.name}</div>
                                   <div className="text-[10px] text-[#666E61]">{unit?.code}</div>
                                 </td>
                                 <td className="py-3 px-3">
-                                  <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#EAE2D6] text-[#666E61] font-semibold">
+                                  <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#E3F2FD] text-[#666E61] font-semibold">
                                     {unit?.category || unit?.unit_type}
                                   </span>
                                 </td>
@@ -978,14 +978,14 @@ export default function WebPage() {
                                     disabled={isLocked}
                                     className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition flex items-center justify-center gap-1 mx-auto ${
                                       item.is_realized
-                                        ? "bg-[#8B9A6E]/15 text-[#8B9A6E] hover:bg-[#8B9A6E]/25 border border-[#8B9A6E]/30"
+                                        ? "bg-[#2196F3]/15 text-[#2196F3] hover:bg-[#2196F3]/25 border border-[#2196F3]/30"
                                         : "bg-[#EEEEEE] text-[#666E61] hover:bg-slate-200 border border-slate-300"
                                     }`}
                                     title="Klik untuk ubah status pembayaran"
                                   >
                                     {item.is_realized ? (
                                       <>
-                                        <Check className="w-3 h-3 text-[#8B9A6E]" />
+                                        <Check className="w-3 h-3 text-[#2196F3]" />
                                         <span>Terbayar</span>
                                       </>
                                     ) : (
@@ -1001,7 +1001,7 @@ export default function WebPage() {
                                       +{formatRupiah(diff)}
                                     </span>
                                   ) : (
-                                    <span className="text-[#8B9A6E] font-bold text-[11px]">
+                                    <span className="text-[#2196F3] font-bold text-[11px]">
                                       {formatRupiah(diff)}
                                     </span>
                                   )}
@@ -1039,8 +1039,8 @@ export default function WebPage() {
               </div>
 
               {isLocked ? (
-                <div className="bg-[#8B9A6E]/10 border border-[#8B9A6E]/30 rounded-2xl p-3 flex items-center gap-2 text-xs text-[#8B9A6E] font-medium">
-                  <Lock className="w-4 h-4 text-[#8B9A6E]" />
+                <div className="bg-[#2196F3]/10 border border-[#2196F3]/30 rounded-2xl p-3 flex items-center gap-2 text-xs text-[#2196F3] font-medium">
+                  <Lock className="w-4 h-4 text-[#2196F3]" />
                   <span>Periode ini telah <strong>LOCKED</strong>. Seluruh mutasi di mobile telah dimatikan dan tersimpan sebagai data historis permanen.</span>
                 </div>
               ) : (
@@ -1051,7 +1051,7 @@ export default function WebPage() {
                   </div>
                   <button
                     onClick={lockCurrentMonth}
-                    className="px-3 py-1 bg-[#8B9A6E] text-white rounded-xl font-semibold text-[11px]"
+                    className="px-3 py-1 bg-[#2196F3] text-white rounded-xl font-semibold text-[11px]"
                   >
                     Kunci Sekarang
                   </button>
@@ -1075,10 +1075,10 @@ export default function WebPage() {
                       const variance = item.actual_amount - item.budget_amount;
 
                       return (
-                        <tr key={item.id} className="hover:bg-[#EAE2D6]/20">
+                        <tr key={item.id} className="hover:bg-[#E3F2FD]/20">
                           <td className="py-3 px-3 font-semibold">{unit?.name}</td>
                           <td className="py-3 px-3">{formatRupiah(item.budget_amount)}</td>
-                          <td className="py-3 px-3 font-bold text-[#8B9A6E]">{formatRupiah(item.actual_amount)}</td>
+                          <td className="py-3 px-3 font-bold text-[#2196F3]">{formatRupiah(item.actual_amount)}</td>
                           <td className="py-3 px-3">
                             <span className="text-[10px] font-semibold text-[#666E61]">
                               {item.is_realized ? "Terbayar" : "Pending"}
@@ -1104,7 +1104,7 @@ export default function WebPage() {
               {/* Form Input New Unit (4 cols) */}
               <div className="lg:col-span-4 bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-5 space-y-4 shadow-xs">
                 <h3 className="text-xs font-bold text-[#242921] uppercase tracking-wider flex items-center gap-1.5">
-                  <Plus className="w-4 h-4 text-[#8B9A6E]" />
+                  <Plus className="w-4 h-4 text-[#2196F3]" />
                   Tambah Master Cashflow Item
                 </h3>
 
@@ -1116,7 +1116,7 @@ export default function WebPage() {
                       placeholder="e.g. CF-ZAKAT"
                       value={unitCode}
                       onChange={(e) => setUnitCode(e.target.value)}
-                      className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
+                      className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
                     />
                   </div>
 
@@ -1128,7 +1128,7 @@ export default function WebPage() {
                       placeholder="e.g. Listrik Kantor"
                       value={unitName}
                       onChange={(e) => setUnitName(e.target.value)}
-                      className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
+                      className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
                     />
                   </div>
 
@@ -1137,7 +1137,7 @@ export default function WebPage() {
                     <select
                       value={unitType}
                       onChange={(e) => setUnitType(e.target.value as UnitType)}
-                      className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
+                      className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
                     >
                       <option value="EXPENSE">EXPENSE (Pengeluaran Rutin)</option>
                       <option value="ASSET">ASSET (Alokasi Tabungan/Investasi)</option>
@@ -1151,7 +1151,7 @@ export default function WebPage() {
                       <select
                         value={unitCategory}
                         onChange={(e) => setUnitCategory(e.target.value as ExpenseCategory)}
-                        className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
+                        className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
                       >
                         {categories.map((c) => (
                           <option key={c.id} value={c.code}>
@@ -1167,7 +1167,7 @@ export default function WebPage() {
                     <select
                       value={unitUrgency}
                       onChange={(e) => setUnitUrgency(e.target.value as UrgencyLevel)}
-                      className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
+                      className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
                     >
                       <option value="HIGHEST">HIGHEST (Urgent)</option>
                       <option value="HIGH">HIGH</option>
@@ -1177,7 +1177,7 @@ export default function WebPage() {
 
                   <button
                     type="submit"
-                    className="w-full py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                    className="w-full py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
                   >
                     Simpan ke Master
                   </button>
@@ -1209,11 +1209,11 @@ export default function WebPage() {
                     </thead>
                     <tbody className="divide-y divide-[#EEEEEE] text-[#242921]">
                       {cashflowUnits.map((u) => (
-                        <tr key={u.id} className="hover:bg-[#EAE2D6]/20 transition">
+                        <tr key={u.id} className="hover:bg-[#E3F2FD]/20 transition">
                           <td className="py-2.5 px-3 font-mono text-[#666E61]">{u.code}</td>
                           <td className="py-2.5 px-3 font-semibold">{u.name}</td>
                           <td className="py-2.5 px-3">
-                            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#EAE2D6] text-[#666E61]">
+                            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#E3F2FD] text-[#666E61]">
                               {u.unit_type}
                             </span>
                           </td>
@@ -1225,8 +1225,8 @@ export default function WebPage() {
                               onClick={() => handleToggleUnitArchive(u)}
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition ${
                                 u.is_active !== false
-                                  ? "bg-[#8B9A6E]/15 text-[#8B9A6E] hover:bg-[#8B9A6E]/25"
-                                  : "bg-[#EEEEEE] text-[#666E61] hover:bg-[#EAE2D6]"
+                                  ? "bg-[#2196F3]/15 text-[#2196F3] hover:bg-[#2196F3]/25"
+                                  : "bg-[#EEEEEE] text-[#666E61] hover:bg-[#E3F2FD]"
                               }`}
                               title="Klik untuk ubah status aktif / arsip"
                             >
@@ -1238,7 +1238,7 @@ export default function WebPage() {
                               <button
                                 type="button"
                                 onClick={() => setEditingUnit(u)}
-                                className="p-1 rounded-lg text-slate-400 hover:text-[#8B9A6E] hover:bg-[#8B9A6E]/10 transition"
+                                className="p-1 rounded-lg text-slate-400 hover:text-[#2196F3] hover:bg-[#2196F3]/10 transition"
                                 title="Edit Unit"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
@@ -1270,7 +1270,7 @@ export default function WebPage() {
               {/* Form Input New Category (4 cols) */}
               <div className="lg:col-span-4 bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-5 space-y-4 shadow-xs">
                 <h3 className="text-xs font-bold text-[#242921] uppercase tracking-wider flex items-center gap-1.5">
-                  <Plus className="w-4 h-4 text-[#8B9A6E]" />
+                  <Plus className="w-4 h-4 text-[#2196F3]" />
                   Tambah Master Kategori
                 </h3>
 
@@ -1283,7 +1283,7 @@ export default function WebPage() {
                       placeholder="e.g. Hobi & Gaming"
                       value={catName}
                       onChange={(e) => setCatName(e.target.value)}
-                      className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
+                      className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
                     />
                   </div>
 
@@ -1294,7 +1294,7 @@ export default function WebPage() {
                       placeholder="e.g. HOBI"
                       value={catCode}
                       onChange={(e) => setCatCode(e.target.value)}
-                      className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
+                      className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
                     />
                   </div>
 
@@ -1312,7 +1312,7 @@ export default function WebPage() {
                     {/* Swatches presets */}
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {[
-                        "#8B9A6E", // Sage
+                        "#2196F3", // Sage
                         "#C2A382", // Sand
                         "#D8A47F", // Clay
                         "#7E8D85", // Slate
@@ -1343,13 +1343,13 @@ export default function WebPage() {
                       placeholder="Keterangan alokasi kategori ini..."
                       value={catDesc}
                       onChange={(e) => setCatDesc(e.target.value)}
-                      className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
+                      className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-1.5 text-xs text-[#242921]"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                    className="w-full py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
                   >
                     Simpan Kategori Baru
                   </button>
@@ -1384,7 +1384,7 @@ export default function WebPage() {
                         const usageCount = cashflowUnits.filter((u) => u.category === c.code).length;
 
                         return (
-                          <tr key={c.id} className="hover:bg-[#EAE2D6]/20 transition">
+                          <tr key={c.id} className="hover:bg-[#E3F2FD]/20 transition">
                             <td className="py-3 px-3">
                               <span
                                 className="w-4 h-4 rounded-full inline-block shadow-2xs border border-white"
@@ -1395,7 +1395,7 @@ export default function WebPage() {
                             <td className="py-3 px-3 font-mono text-[11px] text-[#666E61]">{c.code}</td>
                             <td className="py-3 px-3 text-[#666E61] max-w-xs">{c.description || "-"}</td>
                             <td className="py-3 px-3 text-center">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EAE2D6] text-[#242921]">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E3F2FD] text-[#242921]">
                                 {usageCount} Item
                               </span>
                             </td>
@@ -1404,7 +1404,7 @@ export default function WebPage() {
                                 <button
                                   type="button"
                                   onClick={() => setEditingCategory(c)}
-                                  className="p-1 rounded-lg text-slate-400 hover:text-[#8B9A6E] hover:bg-[#8B9A6E]/10 transition"
+                                  className="p-1 rounded-lg text-slate-400 hover:text-[#2196F3] hover:bg-[#2196F3]/10 transition"
                                   title="Edit kategori"
                                 >
                                   <Pencil className="w-3.5 h-3.5" />
@@ -1444,7 +1444,7 @@ export default function WebPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreateAssetOpen(true)}
-                  className="px-3.5 py-1.5 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                  className="px-3.5 py-1.5 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Tambah Aset Baru
@@ -1466,21 +1466,21 @@ export default function WebPage() {
                   </thead>
                   <tbody className="divide-y divide-[#EEEEEE] text-[#242921]">
                     {assets.map((ast) => (
-                      <tr key={ast.id} className="hover:bg-[#EAE2D6]/20 transition">
+                      <tr key={ast.id} className="hover:bg-[#E3F2FD]/20 transition">
                         <td className="py-3 px-3 font-bold">{ast.name}</td>
                         <td className="py-3 px-3">
                           <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
                             ast.liquidity_tier === "LIQUID"
-                              ? "bg-[#8B9A6E]/15 text-[#8B9A6E]"
+                              ? "bg-[#2196F3]/15 text-[#2196F3]"
                               : ast.liquidity_tier === "SEMI_LIQUID"
-                              ? "bg-[#C2A382]/20 text-[#856545]"
-                              : "bg-[#EAE2D6] text-[#666E61]"
+                              ? "bg-[#90CAF9]/40 text-[#1565C0]"
+                              : "bg-[#E3F2FD] text-[#666E61]"
                           }`}>
                             {ast.liquidity_tier}
                           </span>
                         </td>
                         <td className="py-3 px-3">{formatRupiah(ast.main_value)}</td>
-                        <td className="py-3 px-3 text-[#8B9A6E] font-semibold">
+                        <td className="py-3 px-3 text-[#2196F3] font-semibold">
                           {ast.generating_rate > 0 ? `+${ast.generating_rate}%` : "-"}
                         </td>
                         <td className="py-3 px-3 font-bold text-[#242921]">{formatRupiah(ast.total_value)}</td>
@@ -1490,7 +1490,7 @@ export default function WebPage() {
                             <button
                               type="button"
                               onClick={() => setEditingAsset(ast)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-[#8B9A6E] hover:bg-[#8B9A6E]/10 transition"
+                              className="p-1 rounded-lg text-slate-400 hover:text-[#2196F3] hover:bg-[#2196F3]/10 transition"
                               title="Edit Aset"
                             >
                               <Pencil className="w-3.5 h-3.5" />
@@ -1526,7 +1526,7 @@ export default function WebPage() {
           <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 w-full max-w-md shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
               <div className="flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-[#8B9A6E]" />
+                <Pencil className="w-4 h-4 text-[#2196F3]" />
                 <h3 className="text-sm font-bold text-[#242921]">Edit Cashflow Item</h3>
               </div>
               <button
@@ -1545,7 +1545,7 @@ export default function WebPage() {
                   type="text"
                   value={editingUnit.code}
                   onChange={(e) => setEditingUnit({ ...editingUnit, code: e.target.value })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-mono text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-mono text-[#242921]"
                   required
                 />
               </div>
@@ -1556,7 +1556,7 @@ export default function WebPage() {
                   type="text"
                   value={editingUnit.name}
                   onChange={(e) => setEditingUnit({ ...editingUnit, name: e.target.value })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                   required
                 />
               </div>
@@ -1566,7 +1566,7 @@ export default function WebPage() {
                 <select
                   value={editingUnit.unit_type}
                   onChange={(e) => setEditingUnit({ ...editingUnit, unit_type: e.target.value as UnitType })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                 >
                   <option value="EXPENSE">EXPENSE (Pengeluaran Rutin)</option>
                   <option value="ASSET">ASSET (Alokasi Tabungan/Investasi)</option>
@@ -1580,7 +1580,7 @@ export default function WebPage() {
                   <select
                     value={editingUnit.category || ""}
                     onChange={(e) => setEditingUnit({ ...editingUnit, category: e.target.value })}
-                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                    className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                   >
                     <option value="">Pilih Kategori...</option>
                     {categories.map((c) => (
@@ -1598,7 +1598,7 @@ export default function WebPage() {
                   <select
                     value={editingUnit.linked_asset_id || ""}
                     onChange={(e) => setEditingUnit({ ...editingUnit, linked_asset_id: e.target.value || undefined })}
-                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                    className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                   >
                     <option value="">Tidak ditautkan</option>
                     {assets.map((a) => (
@@ -1615,7 +1615,7 @@ export default function WebPage() {
                 <select
                   value={editingUnit.default_urgency}
                   onChange={(e) => setEditingUnit({ ...editingUnit, default_urgency: e.target.value as UrgencyLevel })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                 >
                   <option value="HIGHEST">HIGHEST (Urgent)</option>
                   <option value="HIGH">HIGH</option>
@@ -1629,7 +1629,7 @@ export default function WebPage() {
                   id="unit-active-status"
                   checked={editingUnit.is_active !== false}
                   onChange={(e) => setEditingUnit({ ...editingUnit, is_active: e.target.checked })}
-                  className="rounded border-[#EEEEEE] text-[#8B9A6E] focus:ring-[#8B9A6E] w-4 h-4 cursor-pointer"
+                  className="rounded border-[#EEEEEE] text-[#2196F3] focus:ring-[#2196F3] w-4 h-4 cursor-pointer"
                 />
                 <label htmlFor="unit-active-status" className="text-xs text-[#242921] font-medium cursor-pointer">
                   Item Aktif (centang untuk tetap muncul di daftar alokasi anggaran)
@@ -1646,7 +1646,7 @@ export default function WebPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                  className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
                 >
                   Simpan Perubahan
                 </button>
@@ -1662,7 +1662,7 @@ export default function WebPage() {
           <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 w-full max-w-md shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
               <div className="flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-[#8B9A6E]" />
+                <Pencil className="w-4 h-4 text-[#2196F3]" />
                 <h3 className="text-sm font-bold text-[#242921]">Edit Master Kategori</h3>
               </div>
               <button
@@ -1681,7 +1681,7 @@ export default function WebPage() {
                   type="text"
                   value={editingCategory.name}
                   onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                   required
                 />
               </div>
@@ -1692,7 +1692,7 @@ export default function WebPage() {
                   type="text"
                   value={editingCategory.code}
                   onChange={(e) => setEditingCategory({ ...editingCategory, code: e.target.value })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-mono text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-mono text-[#242921]"
                   required
                 />
               </div>
@@ -1710,7 +1710,7 @@ export default function WebPage() {
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[
-                    "#8B9A6E", "#C2A382", "#D8A47F", "#7E8D85", "#B3A394",
+                    "#2196F3", "#C2A382", "#D8A47F", "#7E8D85", "#B3A394",
                     "#A4B494", "#9381FF", "#4E79A7", "#E07A5F", "#F2CC8F",
                   ].map((swatch) => (
                     <button
@@ -1732,7 +1732,7 @@ export default function WebPage() {
                   rows={2}
                   value={editingCategory.description || ""}
                   onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                 />
               </div>
 
@@ -1746,7 +1746,7 @@ export default function WebPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                  className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
                 >
                   Simpan Perubahan
                 </button>
@@ -1762,7 +1762,7 @@ export default function WebPage() {
           <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 w-full max-w-md shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
               <div className="flex items-center gap-2">
-                <Plus className="w-4 h-4 text-[#8B9A6E]" />
+                <Plus className="w-4 h-4 text-[#2196F3]" />
                 <h3 className="text-sm font-bold text-[#242921]">Tambah Aset Portofolio</h3>
               </div>
               <button
@@ -1783,7 +1783,7 @@ export default function WebPage() {
                   placeholder="e.g. Reksadana Pasar Uang Bibit, Deposito Jago"
                   value={newAssetName}
                   onChange={(e) => setNewAssetName(e.target.value)}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                 />
               </div>
 
@@ -1792,7 +1792,7 @@ export default function WebPage() {
                 <select
                   value={newAssetTier}
                   onChange={(e) => setNewAssetTier(e.target.value as LiquidityTier)}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                 >
                   <option value="LIQUID">LIQUID (Kas / Rekening Giro / Siap Pakai)</option>
                   <option value="SEMI_LIQUID">SEMI_LIQUID (Reksadana / Saham / Emas)</option>
@@ -1805,7 +1805,7 @@ export default function WebPage() {
                 <CurrencyInput
                   value={newAssetMainValue}
                   onChange={setNewAssetMainValue}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-semibold text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-semibold text-[#242921]"
                 />
               </div>
 
@@ -1818,7 +1818,7 @@ export default function WebPage() {
                     placeholder="e.g. 5.5"
                     value={newAssetYield}
                     onChange={(e) => setNewAssetYield(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                    className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                   />
                 </div>
                 <div>
@@ -1828,7 +1828,7 @@ export default function WebPage() {
                     placeholder="e.g. Dana Darurat"
                     value={newAssetBucket}
                     onChange={(e) => setNewAssetBucket(e.target.value)}
-                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                    className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                   />
                 </div>
               </div>
@@ -1839,7 +1839,7 @@ export default function WebPage() {
                   id="new-asset-external"
                   checked={newAssetIsExternal}
                   onChange={(e) => setNewAssetIsExternal(e.target.checked)}
-                  className="rounded border-[#EEEEEE] text-[#8B9A6E] focus:ring-[#8B9A6E] w-4 h-4 cursor-pointer"
+                  className="rounded border-[#EEEEEE] text-[#2196F3] focus:ring-[#2196F3] w-4 h-4 cursor-pointer"
                 />
                 <label htmlFor="new-asset-external" className="text-xs text-[#242921] font-medium cursor-pointer">
                   Aset Eksternal (Di luar mutasi rekening operasional harian)
@@ -1856,7 +1856,7 @@ export default function WebPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                  className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
                 >
                   Simpan Aset
                 </button>
@@ -1872,7 +1872,7 @@ export default function WebPage() {
           <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 w-full max-w-md shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
               <div className="flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-[#8B9A6E]" />
+                <Pencil className="w-4 h-4 text-[#2196F3]" />
                 <h3 className="text-sm font-bold text-[#242921]">Edit Aset Portofolio</h3>
               </div>
               <button
@@ -1892,7 +1892,7 @@ export default function WebPage() {
                   required
                   value={editingAsset.name}
                   onChange={(e) => setEditingAsset({ ...editingAsset, name: e.target.value })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                 />
               </div>
 
@@ -1901,7 +1901,7 @@ export default function WebPage() {
                 <select
                   value={editingAsset.liquidity_tier}
                   onChange={(e) => setEditingAsset({ ...editingAsset, liquidity_tier: e.target.value as LiquidityTier })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                 >
                   <option value="LIQUID">LIQUID (Kas / Rekening Giro)</option>
                   <option value="SEMI_LIQUID">SEMI_LIQUID (Reksadana / Saham)</option>
@@ -1914,7 +1914,7 @@ export default function WebPage() {
                 <CurrencyInput
                   value={editingAsset.main_value}
                   onChange={(val) => setEditingAsset({ ...editingAsset, main_value: val })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-semibold text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-semibold text-[#242921]"
                 />
               </div>
 
@@ -1926,7 +1926,7 @@ export default function WebPage() {
                     step="0.01"
                     value={editingAsset.generating_rate}
                     onChange={(e) => setEditingAsset({ ...editingAsset, generating_rate: parseFloat(e.target.value) || 0 })}
-                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                    className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                   />
                 </div>
                 <div>
@@ -1935,7 +1935,7 @@ export default function WebPage() {
                     type="text"
                     value={editingAsset.goal_bucket || ""}
                     onChange={(e) => setEditingAsset({ ...editingAsset, goal_bucket: e.target.value })}
-                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                    className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                   />
                 </div>
               </div>
@@ -1945,7 +1945,7 @@ export default function WebPage() {
                 <CurrencyInput
                   value={editingAsset.income_generated}
                   onChange={(val) => setEditingAsset({ ...editingAsset, income_generated: val })}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                 />
               </div>
 
@@ -1955,7 +1955,7 @@ export default function WebPage() {
                   id="edit-asset-external"
                   checked={editingAsset.is_external || false}
                   onChange={(e) => setEditingAsset({ ...editingAsset, is_external: e.target.checked })}
-                  className="rounded border-[#EEEEEE] text-[#8B9A6E] focus:ring-[#8B9A6E] w-4 h-4 cursor-pointer"
+                  className="rounded border-[#EEEEEE] text-[#2196F3] focus:ring-[#2196F3] w-4 h-4 cursor-pointer"
                 />
                 <label htmlFor="edit-asset-external" className="text-xs text-[#242921] font-medium cursor-pointer">
                   Aset Eksternal
@@ -1972,7 +1972,7 @@ export default function WebPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                  className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
                 >
                   Simpan Perubahan
                 </button>
@@ -2006,7 +2006,7 @@ export default function WebPage() {
                     <button
                       type="button"
                       onClick={() => handleToggleUnitArchive(unit)}
-                      className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                      className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
                     >
                       Arsipkan (Nonaktifkan) Saja
                     </button>

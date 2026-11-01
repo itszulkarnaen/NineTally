@@ -5,7 +5,7 @@ export const initialCategories: CashflowCategory[] = [
     id: "cat-1",
     code: "HOLY_THING",
     name: "Holy Thing",
-    color: "#8B9A6E", // Primary Sage Olive
+    color: "#2196F3", // Primary Vibrant Blue
     description: "Sedekah, Zakat, Ortu, dan alokasi kebaikan",
     sort_order: 1,
   },

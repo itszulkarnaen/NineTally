@@ -205,7 +205,7 @@ export default function MobilePage() {
         return {
           name: cat?.name || code,
           value: val,
-          color: cat?.color || "#8B9A6E",
+          color: cat?.color || "#2196F3",
         };
       });
   }, [monthTransactions, cashflowUnits, categories]);
@@ -265,12 +265,12 @@ export default function MobilePage() {
       case "HIGH":
         return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">HIGH</span>;
       case "NORMAL":
-        return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#8B9A6E]/15 text-[#8B9A6E] border border-[#8B9A6E]/30">NORMAL</span>;
+        return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30">NORMAL</span>;
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#EAE2D6] pb-24 text-[#242921]">
+    <div className="min-h-screen bg-[#E3F2FD] pb-24 text-[#242921]">
       {/* Top Mobile Bar with Custom App Icon & Switch to Web */}
       <div className="sticky top-0 z-40 bg-[#FFFFFF]/90 backdrop-blur border-b border-[#EEEEEE] px-4 py-3 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2.5">
@@ -296,7 +296,7 @@ export default function MobilePage() {
               isLocked
                 ? "bg-amber-100 text-amber-800 border border-amber-200"
                 : currentMonthData.status === "ACTIVE"
-                ? "bg-[#8B9A6E]/15 text-[#8B9A6E] border border-[#8B9A6E]/30"
+                ? "bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30"
                 : "bg-blue-100 text-blue-800 border border-blue-200"
             }`}
           >
@@ -306,7 +306,7 @@ export default function MobilePage() {
           <button
             onClick={handleLogout}
             title="Keluar / Logout"
-            className="p-1.5 rounded-xl bg-[#EAE2D6] hover:bg-rose-100 hover:text-rose-700 transition text-[#666E61]"
+            className="p-1.5 rounded-xl bg-[#E3F2FD] hover:bg-rose-100 hover:text-rose-700 transition text-[#666E61]"
           >
             <LogOut className="w-3.5 h-3.5" />
           </button>
@@ -341,7 +341,7 @@ export default function MobilePage() {
             >
               {isBalanceHidden ? (
                 <>
-                  <EyeOff className="w-3 h-3 text-[#8B9A6E]" />
+                  <EyeOff className="w-3 h-3 text-[#2196F3]" />
                   <span>Buka Saldo</span>
                 </>
               ) : (
@@ -358,10 +358,10 @@ export default function MobilePage() {
             <div className="w-[84vw] max-w-[320px] shrink-0 snap-center bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-5 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-xs text-[#666E61]">
-                  <span className="font-bold tracking-wider text-[11px] uppercase text-[#8B9A6E] flex items-center gap-1.5">
+                  <span className="font-bold tracking-wider text-[11px] uppercase text-[#2196F3] flex items-center gap-1.5">
                     <Landmark className="w-3.5 h-3.5" /> Bank Balance
                   </span>
-                  <span className="text-[10px] bg-[#8B9A6E]/15 text-[#8B9A6E] px-2 py-0.5 rounded-full font-bold border border-[#8B9A6E]/20">
+                  <span className="text-[10px] bg-[#2196F3]/15 text-[#2196F3] px-2 py-0.5 rounded-full font-bold border border-[#2196F3]/20">
                     BCA Utama
                   </span>
                 </div>
@@ -376,14 +376,14 @@ export default function MobilePage() {
                       title={isBalanceHidden ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
                       aria-label="Toggle Saldo"
                     >
-                      {isBalanceHidden ? <EyeOff className="w-4 h-4 text-[#8B9A6E]" /> : <Eye className="w-4 h-4" />}
+                      {isBalanceHidden ? <EyeOff className="w-4 h-4 text-[#2196F3]" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
               </div>
               <div className="text-[11px] text-[#666E61] flex items-center justify-between border-t border-[#EEEEEE] pt-2 font-medium">
                 <span>Saldo Rekening Operasional</span>
-                <span className="text-[10px] bg-[#EAE2D6] px-1.5 py-0.5 rounded text-[#666E61] font-semibold">
+                <span className="text-[10px] bg-[#E3F2FD] px-1.5 py-0.5 rounded text-[#666E61] font-semibold">
                   Liquid Cash
                 </span>
               </div>
@@ -411,14 +411,14 @@ export default function MobilePage() {
                       title={isBalanceHidden ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
                       aria-label="Toggle Saldo"
                     >
-                      {isBalanceHidden ? <EyeOff className="w-4 h-4 text-[#8B9A6E]" /> : <Eye className="w-4 h-4" />}
+                      {isBalanceHidden ? <EyeOff className="w-4 h-4 text-[#2196F3]" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
               </div>
               <div className="text-[11px] text-[#666E61] flex items-center justify-between border-t border-[#EEEEEE] pt-2 font-medium">
                 <span>Total Realisasi Bulan Ini</span>
-                <span className="text-[10px] text-[#8B9A6E] font-bold">
+                <span className="text-[10px] text-[#2196F3] font-bold">
                   {cashflowMetrics.totalIncome > 0
                     ? `${Math.round((cashflowMetrics.realizedSum / cashflowMetrics.totalIncome) * 100)}% Budget`
                     : "0%"}
@@ -430,10 +430,10 @@ export default function MobilePage() {
             <div className="w-[84vw] max-w-[320px] shrink-0 snap-center bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-5 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-xs text-[#666E61]">
-                  <span className="font-bold tracking-wider text-[11px] uppercase text-[#8B9A6E] flex items-center gap-1.5">
+                  <span className="font-bold tracking-wider text-[11px] uppercase text-[#2196F3] flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" /> Assets
                   </span>
-                  <span className="text-[10px] bg-[#EAE2D6] px-2 py-0.5 rounded-full font-semibold text-[#666E61]">
+                  <span className="text-[10px] bg-[#E3F2FD] px-2 py-0.5 rounded-full font-semibold text-[#666E61]">
                     Net Worth
                   </span>
                 </div>
@@ -448,7 +448,7 @@ export default function MobilePage() {
                       title={isBalanceHidden ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
                       aria-label="Toggle Saldo"
                     >
-                      {isBalanceHidden ? <EyeOff className="w-4 h-4 text-[#8B9A6E]" /> : <Eye className="w-4 h-4" />}
+                      {isBalanceHidden ? <EyeOff className="w-4 h-4 text-[#2196F3]" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
@@ -472,12 +472,12 @@ export default function MobilePage() {
           <div className="space-y-1.5">
             <div className="w-full bg-[#EEEEEE] h-2.5 rounded-full overflow-hidden flex">
               <div 
-                className="bg-[#8B9A6E] h-full transition-all duration-300"
+                className="bg-[#2196F3] h-full transition-all duration-300"
                 style={{ width: `${Math.min(100, (cashflowMetrics.realizedSum / (cashflowMetrics.totalIncome || 1)) * 100)}%` }}
               />
             </div>
             <div className="flex justify-between text-[11px] font-medium">
-              <span className="text-[#8B9A6E]">Terlaksana: {maskNominal(cashflowMetrics.realizedSum)}</span>
+              <span className="text-[#2196F3]">Terlaksana: {maskNominal(cashflowMetrics.realizedSum)}</span>
               <span className="text-[#666E61]">Sisa: {maskNominal(cashflowMetrics.sisaAnggaran)}</span>
             </div>
           </div>
@@ -488,7 +488,7 @@ export default function MobilePage() {
           <button
             onClick={() => setActiveTab("transactions")}
             className={`py-2 text-xs font-semibold rounded-xl flex flex-col items-center gap-1 transition ${
-              activeTab === "transactions" ? "bg-[#8B9A6E] text-white shadow-xs" : "text-[#666E61]"
+              activeTab === "transactions" ? "bg-[#2196F3] text-white shadow-xs" : "text-[#666E61]"
             }`}
           >
             <Receipt className="w-4 h-4" />
@@ -497,7 +497,7 @@ export default function MobilePage() {
           <button
             onClick={() => setActiveTab("chart")}
             className={`py-2 text-xs font-semibold rounded-xl flex flex-col items-center gap-1 transition ${
-              activeTab === "chart" ? "bg-[#8B9A6E] text-white shadow-xs" : "text-[#666E61]"
+              activeTab === "chart" ? "bg-[#2196F3] text-white shadow-xs" : "text-[#666E61]"
             }`}
           >
             <PieChartIcon className="w-4 h-4" />
@@ -506,7 +506,7 @@ export default function MobilePage() {
           <button
             onClick={() => setActiveTab("assets")}
             className={`py-2 text-xs font-semibold rounded-xl flex flex-col items-center gap-1 transition ${
-              activeTab === "assets" ? "bg-[#8B9A6E] text-white shadow-xs" : "text-[#666E61]"
+              activeTab === "assets" ? "bg-[#2196F3] text-white shadow-xs" : "text-[#666E61]"
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -515,7 +515,7 @@ export default function MobilePage() {
           <button
             onClick={() => setActiveTab("wishlist")}
             className={`py-2 text-xs font-semibold rounded-xl flex flex-col items-center gap-1 transition ${
-              activeTab === "wishlist" ? "bg-[#8B9A6E] text-white shadow-xs" : "text-[#666E61]"
+              activeTab === "wishlist" ? "bg-[#2196F3] text-white shadow-xs" : "text-[#666E61]"
             }`}
           >
             <Gift className="w-4 h-4" />
@@ -534,7 +534,7 @@ export default function MobilePage() {
                 onClick={() => setTransactionView("items")}
                 className={`flex-1 py-1.5 rounded-lg font-bold transition text-center ${
                   transactionView === "items"
-                    ? "bg-[#EAE2D6] text-[#242921] shadow-2xs"
+                    ? "bg-[#E3F2FD] text-[#242921] shadow-2xs"
                     : "text-[#666E61] hover:text-[#242921]"
                 }`}
               >
@@ -544,7 +544,7 @@ export default function MobilePage() {
                 onClick={() => setTransactionView("history")}
                 className={`flex-1 py-1.5 rounded-lg font-bold transition text-center ${
                   transactionView === "history"
-                    ? "bg-[#EAE2D6] text-[#242921] shadow-2xs"
+                    ? "bg-[#E3F2FD] text-[#242921] shadow-2xs"
                     : "text-[#666E61] hover:text-[#242921]"
                 }`}
               >
@@ -563,7 +563,7 @@ export default function MobilePage() {
                     placeholder="Cari cashflow item... (e.g. Makan, Kos, Bensin)"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#FFFFFF] border border-[#EEEEEE] rounded-2xl pl-10 pr-9 py-2.5 text-xs text-[#242921] placeholder:text-[#666E61]/60 shadow-xs focus:outline-none focus:border-[#8B9A6E]"
+                    className="w-full bg-[#FFFFFF] border border-[#EEEEEE] rounded-2xl pl-10 pr-9 py-2.5 text-xs text-[#242921] placeholder:text-[#666E61]/60 shadow-xs focus:outline-none focus:border-[#2196F3]"
                   />
                   {searchQuery && (
                     <button
@@ -588,7 +588,7 @@ export default function MobilePage() {
                     </p>
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="text-xs font-bold text-[#8B9A6E] underline"
+                      className="text-xs font-bold text-[#2196F3] underline"
                     >
                       Reset Pencarian
                     </button>
@@ -631,11 +631,11 @@ export default function MobilePage() {
                                   Overbudget
                                 </span>
                               ) : spent >= budget && budget > 0 ? (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8B9A6E]/15 text-[#8B9A6E] border border-[#8B9A6E]/30">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30">
                                   100% Tercapai
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EAE2D6] text-[#666E61]">
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E3F2FD] text-[#666E61]">
                                   {pct}% Terpakai
                                 </span>
                               )}
@@ -647,7 +647,7 @@ export default function MobilePage() {
                             <div className="w-full bg-[#EEEEEE] h-2 rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-300 ${
-                                  isOver ? "bg-rose-500" : "bg-[#8B9A6E]"
+                                  isOver ? "bg-rose-500" : "bg-[#2196F3]"
                                 }`}
                                 style={{ width: `${Math.min(100, pct)}%` }}
                               />
@@ -675,7 +675,7 @@ export default function MobilePage() {
                             {!isLocked && (
                               <button
                                 onClick={() => openTxModal(item.cashflow_unit_id)}
-                                className="px-3 py-1 rounded-xl bg-[#8B9A6E]/15 hover:bg-[#8B9A6E]/25 text-[#8B9A6E] font-bold text-[11px] transition flex items-center gap-1 border border-[#8B9A6E]/30"
+                                className="px-3 py-1 rounded-xl bg-[#2196F3]/15 hover:bg-[#2196F3]/25 text-[#2196F3] font-bold text-[11px] transition flex items-center gap-1 border border-[#2196F3]/30"
                               >
                                 <Plus className="w-3.5 h-3.5" />
                                 <span>Catat</span>
@@ -690,7 +690,7 @@ export default function MobilePage() {
                     {visibleItemLimit < filteredBudgetItems.length ? (
                       <div className="space-y-2 pt-1 pb-2">
                         <div ref={sentinelRef} className="py-2 flex items-center justify-center gap-2 text-xs text-[#666E61]">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#8B9A6E]" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2196F3]" />
                           <span>Scroll untuk memuat 5 item lagi...</span>
                         </div>
                         <button
@@ -721,7 +721,7 @@ export default function MobilePage() {
                   <select
                     value={selectedPosFilter}
                     onChange={(e) => setSelectedPosFilter(e.target.value)}
-                    className="flex-1 bg-[#EAE2D6]/40 border border-[#EEEEEE] rounded-xl px-2.5 py-1 text-xs text-[#242921] font-medium"
+                    className="flex-1 bg-[#E3F2FD]/40 border border-[#EEEEEE] rounded-xl px-2.5 py-1 text-xs text-[#242921] font-medium"
                   >
                     <option value="ALL">Semua Cashflow Item ({monthTransactions.length})</option>
                     {budgetItems.map((item) => {
@@ -755,13 +755,13 @@ export default function MobilePage() {
                         className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs"
                       >
                         <div className="flex items-start gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-xl bg-[#8B9A6E]/15 text-[#8B9A6E] flex items-center justify-center shrink-0 mt-0.5">
+                          <div className="w-8 h-8 rounded-xl bg-[#2196F3]/15 text-[#2196F3] flex items-center justify-center shrink-0 mt-0.5">
                             <Receipt className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-bold text-xs text-[#242921] truncate">{unit?.name}</span>
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#EAE2D6] text-[#666E61]">
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#E3F2FD] text-[#666E61]">
                                 {unit?.category || unit?.unit_type}
                               </span>
                             </div>
@@ -809,7 +809,7 @@ export default function MobilePage() {
               {chartData.length > 0 && (
                 <div className="text-right">
                   <span className="text-[10px] text-[#666E61] block">Total Realisasi</span>
-                  <span className="text-xs font-bold text-[#8B9A6E]">
+                  <span className="text-xs font-bold text-[#2196F3]">
                     {formatRupiah(chartData.reduce((acc, curr) => acc + curr.value, 0))}
                   </span>
                 </div>
@@ -817,7 +817,7 @@ export default function MobilePage() {
             </div>
 
             {chartData.length === 0 ? (
-              <div className="p-8 text-center bg-[#EAE2D6]/20 border border-dashed border-[#EEEEEE] rounded-2xl space-y-2">
+              <div className="p-8 text-center bg-[#E3F2FD]/20 border border-dashed border-[#EEEEEE] rounded-2xl space-y-2">
                 <PieChartIcon className="w-8 h-8 text-[#666E61] mx-auto opacity-50" />
                 <p className="text-xs font-bold text-[#242921]">Belum Ada Transaksi Riil</p>
                 <p className="text-[11px] text-[#666E61]">
@@ -892,10 +892,10 @@ export default function MobilePage() {
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
                         asset.liquidity_tier === "LIQUID"
-                          ? "bg-[#8B9A6E]/15 text-[#8B9A6E]"
+                          ? "bg-[#2196F3]/15 text-[#2196F3]"
                           : asset.liquidity_tier === "SEMI_LIQUID"
-                          ? "bg-[#C2A382]/20 text-[#856545]"
-                          : "bg-[#EAE2D6] text-[#666E61]"
+                          ? "bg-[#90CAF9]/40 text-[#1565C0]"
+                          : "bg-[#E3F2FD] text-[#666E61]"
                       }`}>
                         {asset.liquidity_tier}
                       </span>
@@ -910,7 +910,7 @@ export default function MobilePage() {
                   <div className="text-right">
                     <span className="font-bold text-xs text-[#242921] block">{formatRupiah(asset.total_value)}</span>
                     {asset.generating_rate > 0 && (
-                      <span className="text-[10px] text-[#8B9A6E] font-bold">+{asset.generating_rate}% Yield</span>
+                      <span className="text-[10px] text-[#2196F3] font-bold">+{asset.generating_rate}% Yield</span>
                     )}
                   </div>
                 </div>
@@ -936,14 +936,14 @@ export default function MobilePage() {
               <div
                 key={wl.id}
                 className={`rounded-2xl border p-3.5 flex items-center justify-between gap-3 shadow-xs transition ${
-                  wl.is_bought ? "bg-[#FFFFFF] border-[#8B9A6E] line-through opacity-70" : "bg-[#FFFFFF] border-[#EEEEEE]"
+                  wl.is_bought ? "bg-[#FFFFFF] border-[#2196F3] line-through opacity-70" : "bg-[#FFFFFF] border-[#EEEEEE]"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => toggleWishlistBought(wl.id)}
                     className={`w-7 h-7 rounded-xl flex items-center justify-center transition ${
-                      wl.is_bought ? "bg-[#8B9A6E] text-white shadow-xs" : "border border-[#EEEEEE] text-slate-300 hover:border-[#8B9A6E]"
+                      wl.is_bought ? "bg-[#2196F3] text-white shadow-xs" : "border border-[#EEEEEE] text-slate-300 hover:border-[#2196F3]"
                     }`}
                   >
                     <Check className="w-4 h-4" />
@@ -964,7 +964,7 @@ export default function MobilePage() {
       {!isLocked && activeTab === "transactions" && budgetItems.length > 0 && (
         <button
           onClick={() => openTxModal()}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-[#8B9A6E] hover:bg-[#7A895F] text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-90 z-30"
+          className="fixed bottom-6 right-6 w-14 h-14 bg-[#2196F3] hover:bg-[#1E88E5] text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-90 z-30"
           title="Catat Transaksi"
         >
           <Plus className="w-6 h-6 stroke-[3]" />
@@ -973,7 +973,7 @@ export default function MobilePage() {
 
       {/* Success Feedback Toast */}
       {isSuccessToast && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-[#8B9A6E] text-white px-4 py-2 rounded-2xl shadow-lg text-xs font-bold flex items-center gap-2 animate-in fade-in">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-[#2196F3] text-white px-4 py-2 rounded-2xl shadow-lg text-xs font-bold flex items-center gap-2 animate-in fade-in">
           <Check className="w-4 h-4 stroke-[3]" />
           <span>Transaksi berhasil dicatat!</span>
         </div>
@@ -1016,28 +1016,28 @@ export default function MobilePage() {
                   <button
                     type="button"
                     onClick={() => addQuickNominal(10000)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#EAE2D6]/50 hover:bg-[#EAE2D6] rounded-lg border border-[#EEEEEE] text-[#242921]"
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] rounded-lg border border-[#EEEEEE] text-[#242921]"
                   >
                     +10rb
                   </button>
                   <button
                     type="button"
                     onClick={() => addQuickNominal(20000)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#EAE2D6]/50 hover:bg-[#EAE2D6] rounded-lg border border-[#EEEEEE] text-[#242921]"
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] rounded-lg border border-[#EEEEEE] text-[#242921]"
                   >
                     +20rb
                   </button>
                   <button
                     type="button"
                     onClick={() => addQuickNominal(50000)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#EAE2D6]/50 hover:bg-[#EAE2D6] rounded-lg border border-[#EEEEEE] text-[#242921]"
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] rounded-lg border border-[#EEEEEE] text-[#242921]"
                   >
                     +50rb
                   </button>
                   <button
                     type="button"
                     onClick={() => addQuickNominal(100000)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#EAE2D6]/50 hover:bg-[#EAE2D6] rounded-lg border border-[#EEEEEE] text-[#242921]"
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] rounded-lg border border-[#EEEEEE] text-[#242921]"
                   >
                     +100rb
                   </button>
@@ -1061,7 +1061,7 @@ export default function MobilePage() {
                 <select
                   value={txUnitId}
                   onChange={(e) => setTxUnitId(e.target.value)}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2.5 text-xs text-[#242921] font-medium"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2.5 text-xs text-[#242921] font-medium"
                   required
                 >
                   {budgetItems.map((item) => {
@@ -1086,7 +1086,7 @@ export default function MobilePage() {
                   placeholder="misal: Makan siang sate, beli bensin, token..."
                   value={txNotes}
                   onChange={(e) => setTxNotes(e.target.value)}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                 />
               </div>
 
@@ -1099,7 +1099,7 @@ export default function MobilePage() {
                   type="date"
                   value={txDate}
                   onChange={(e) => setTxDate(e.target.value)}
-                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                   required
                 />
               </div>
@@ -1111,7 +1111,7 @@ export default function MobilePage() {
                 className={`w-full py-3 rounded-2xl font-bold text-xs shadow-xs transition flex items-center justify-center gap-2 ${
                   txNominal <= 0 || !txUnitId
                     ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                    : "bg-[#8B9A6E] hover:bg-[#7A895F] text-white active:scale-[0.99]"
+                    : "bg-[#2196F3] hover:bg-[#1E88E5] text-white active:scale-[0.99]"
                 }`}
               >
                 <Check className="w-4 h-4 stroke-[3]" />

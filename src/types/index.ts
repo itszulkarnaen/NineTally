@@ -6,7 +6,7 @@ export interface CashflowCategory {
   id: string;
   code: string;        // Unique code e.g. "HOLY_THING", "LIABILITY"
   name: string;        // Display label e.g. "Holy Thing", "Liability"
-  color: string;       // Hex color for badges & Pie Chart slices e.g. "#8B9A6E"
+  color: string;       // Hex color for badges & Pie Chart slices e.g. "#2196F3"
   description?: string;
   sort_order: number;
 }
