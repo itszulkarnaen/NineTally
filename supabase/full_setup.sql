@@ -186,24 +186,24 @@ INSERT INTO public.budget_periods (period_month, status, salary_budget, addition
 ('2027-01', 'PLANNING', 10000000, 0, 0, 0)
 ON CONFLICT (period_month) DO NOTHING;
 
--- 4.5 Budget Period Items (November 2026)
+-- 4.5 Budget Period Items (November 2026) - Starts with 0 realization
 INSERT INTO public.budget_period_items (id, period_id, cashflow_unit_id, budget_amount, realization_amount, projection_amount, actual_amount, urgency, is_realized, sort_order) VALUES
-('bi-1', '2026-11', 'cf-1', 180000, 180000, 180000, 180000, 'HIGHEST', FALSE, 1),
-('bi-2', '2026-11', 'cf-2', 200000, 200000, 200000, 200000, 'HIGHEST', FALSE, 2),
-('bi-3', '2026-11', 'cf-3', 200000, 200000, 200000, 200000, 'HIGH', FALSE, 3),
-('bi-4', '2026-11', 'cf-4', 3000000, 3000000, 3000000, 3000000, 'HIGH', TRUE, 4),
-('bi-5', '2026-11', 'cf-5', 1770000, 1770000, 1770000, 1770000, 'HIGH', TRUE, 5),
-('bi-6', '2026-11', 'cf-6', 500000, 500000, 500000, 500000, 'NORMAL', TRUE, 6),
-('bi-7', '2026-11', 'cf-7', 50000, 50000, 50000, 50000, 'NORMAL', TRUE, 7),
-('bi-8', '2026-11', 'cf-8', 100000, 100000, 100000, 100000, 'HIGH', FALSE, 8),
-('bi-9', '2026-11', 'cf-9', 100000, 100000, 100000, 100000, 'HIGH', FALSE, 9),
-('bi-10', '2026-11', 'cf-10', 79000, 79000, 79000, 79000, 'HIGH', TRUE, 10),
-('bi-11', '2026-11', 'cf-11', 175000, 175000, 175000, 175000, 'HIGH', TRUE, 11),
-('bi-12', '2026-11', 'cf-12', 2000000, 2000000, 2000000, 2000000, 'HIGH', FALSE, 12),
-('bi-13', '2026-11', 'cf-13', 450000, 450000, 450000, 450000, 'HIGH', TRUE, 13),
-('bi-14', '2026-11', 'cf-14', 30000, 30000, 30000, 30000, 'HIGH', FALSE, 14),
-('bi-15', '2026-11', 'cf-15', 260000, 260000, 260000, 260000, 'HIGH', FALSE, 15),
-('bi-16', '2026-11', 'cf-16', 885000, 885000, 885000, 885000, 'HIGH', FALSE, 16)
+('bi-1', '2026-11', 'cf-1', 180000, 0, 0, 0, 'HIGHEST', FALSE, 1),
+('bi-2', '2026-11', 'cf-2', 200000, 0, 0, 0, 'HIGHEST', FALSE, 2),
+('bi-3', '2026-11', 'cf-3', 200000, 0, 0, 0, 'HIGH', FALSE, 3),
+('bi-4', '2026-11', 'cf-4', 3000000, 0, 0, 0, 'HIGH', FALSE, 4),
+('bi-5', '2026-11', 'cf-5', 1770000, 0, 0, 0, 'HIGH', FALSE, 5),
+('bi-6', '2026-11', 'cf-6', 500000, 0, 0, 0, 'NORMAL', FALSE, 6),
+('bi-7', '2026-11', 'cf-7', 50000, 0, 0, 0, 'NORMAL', FALSE, 7),
+('bi-8', '2026-11', 'cf-8', 100000, 0, 0, 0, 'HIGH', FALSE, 8),
+('bi-9', '2026-11', 'cf-9', 100000, 0, 0, 0, 'HIGH', FALSE, 9),
+('bi-10', '2026-11', 'cf-10', 79000, 0, 0, 0, 'HIGH', FALSE, 10),
+('bi-11', '2026-11', 'cf-11', 175000, 0, 0, 0, 'HIGH', FALSE, 11),
+('bi-12', '2026-11', 'cf-12', 2000000, 0, 0, 0, 'HIGH', FALSE, 12),
+('bi-13', '2026-11', 'cf-13', 450000, 0, 0, 0, 'HIGH', FALSE, 13),
+('bi-14', '2026-11', 'cf-14', 30000, 0, 0, 0, 'HIGH', FALSE, 14),
+('bi-15', '2026-11', 'cf-15', 260000, 0, 0, 0, 'HIGH', FALSE, 15),
+('bi-16', '2026-11', 'cf-16', 885000, 0, 0, 0, 'HIGH', FALSE, 16)
 ON CONFLICT (id) DO NOTHING;
 
 -- 4.6 Transactions
