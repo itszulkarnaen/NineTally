@@ -48,7 +48,7 @@ export default function LoginPage() {
         <div className="text-center space-y-2">
           <div className="inline-block relative w-16 h-16 rounded-2xl overflow-hidden shadow-xs border border-[#EEEEEE] mb-1">
             <Image
-              src="/app-icon.png"
+              src="/NineTally.png"
               alt="NineTally Logo"
               fill
               sizes="64px"

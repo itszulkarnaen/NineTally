@@ -276,8 +276,8 @@ export default function MobilePage() {
         <div className="flex items-center gap-2.5">
           <div className="relative w-8 h-8 rounded-xl overflow-hidden shadow-xs border border-[#EEEEEE] shrink-0">
             <Image
-              src="/app-icon.png"
-              alt="Self Cash Flow Icon"
+              src="/NineTally.png"
+              alt="NineTally Icon"
               fill
               sizes="32px"
               className="object-cover"
@@ -286,7 +286,7 @@ export default function MobilePage() {
           </div>
           <div>
             <h1 className="text-xs font-bold text-[#242921]">NineTally</h1>
-            <p className="text-[10px] text-[#666E61]">Mobile PWA</p>
+            <p className="text-[10px] text-[#666E61]">Self Cash Flow</p>
           </div>
         </div>
 

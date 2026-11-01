@@ -330,8 +330,8 @@ export default function WebPage() {
           <div className="flex items-center gap-3 pb-2 border-b border-[#EEEEEE]">
             <div className="relative w-10 h-10 rounded-xl overflow-hidden shadow-xs border border-[#EEEEEE] shrink-0">
               <Image
-                src="/app-icon.png"
-                alt="Self Cash Flow Icon"
+                src="/NineTally.png"
+                alt="NineTally Icon"
                 fill
                 sizes="40px"
                 className="object-cover"
@@ -340,9 +340,9 @@ export default function WebPage() {
             </div>
             <div>
               <h1 className="font-bold text-sm tracking-tight text-[#242921]">
-                Self Cash Flow
+                NineTally
               </h1>
-              <p className="text-[11px] text-[#666E61]">Finance Console</p>
+              <p className="text-[11px] text-[#666E61]">Self Cash Flow Console</p>
             </div>
           </div>
 
