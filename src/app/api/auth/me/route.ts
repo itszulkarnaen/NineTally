@@ -20,3 +20,4 @@ export async function GET() {
     user: { email: EXPECTED_EMAIL, name: "Zulkarnaen" },
   });
 }
+

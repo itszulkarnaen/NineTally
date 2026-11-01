@@ -128,10 +128,14 @@ interface AppContextType {
 
   // Actions: Master Data
   createCashflowUnit: (unit: Omit<CashflowUnit, "id" | "is_active">) => void;
+  updateCashflowUnit: (id: string, unit: Partial<CashflowUnit>) => void;
+  deleteCashflowUnit: (id: string) => { success: boolean; message?: string };
   createCategory: (cat: Omit<CashflowCategory, "id">) => void;
   updateCategory: (id: string, cat: Partial<CashflowCategory>) => void;
-  deleteCategory: (id: string) => void;
+  deleteCategory: (id: string) => { success: boolean; message?: string };
   createAsset: (asset: Omit<Asset, "id" | "total_value">) => void;
+  updateAsset: (id: string, asset: Partial<Asset>) => void;
+  deleteAsset: (id: string) => { success: boolean; message?: string };
   toggleWishlistBought: (wishlistId: string) => void;
 }
 
@@ -807,6 +811,70 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Master Data: Update Cashflow Unit
+  const updateCashflowUnit = (id: string, unitUpdate: Partial<CashflowUnit>) => {
+    setCashflowUnits((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, ...unitUpdate } : u))
+    );
+
+    if (isSupabaseConfigured) {
+      supabase
+        .from("cashflow_units")
+        .update(unitUpdate)
+        .eq("id", id)
+        .then(({ error }) => {
+          if (error) console.error("Supabase update unit error:", error.message);
+        });
+    }
+  };
+
+  // Master Data: Delete Cashflow Unit with strict validation
+  const deleteCashflowUnit = (id: string): { success: boolean; message?: string } => {
+    const target = cashflowUnits.find((u) => u.id === id);
+    if (!target) return { success: false, message: "Cashflow Item tidak ditemukan." };
+
+    // Check usage across all budget months
+    const usedInMonths: string[] = [];
+    Object.values(periodsMap).forEach((p) => {
+      if (p.items && p.items.some((i) => i.cashflow_unit_id === id)) {
+        usedInMonths.push(p.period_month);
+      }
+    });
+
+    // Check usage in logged transactions
+    const usedTransactionsCount = transactions.filter((t) => t.cashflow_unit_id === id).length;
+
+    if (usedInMonths.length > 0 || usedTransactionsCount > 0) {
+      const reasons: string[] = [];
+      if (usedInMonths.length > 0) {
+        reasons.push(`dianggarkan pada periode: ${usedInMonths.join(", ")}`);
+      }
+      if (usedTransactionsCount > 0) {
+        reasons.push(`tercatat dalam ${usedTransactionsCount} transaksi riil`);
+      }
+
+      return {
+        success: false,
+        message: `Gak bisa dihapus bro! Cashflow item '${target.name}' sudah ${reasons.join(" dan ")}. Untuk menjaga integritas data historis, lu bisa nonaktifkan (archive) item ini agar tidak muncul di rencana bulan mendatang.`,
+      };
+    }
+
+    // Safe to delete!
+    setCashflowUnits((prev) => prev.filter((u) => u.id !== id));
+
+    if (isSupabaseConfigured) {
+      supabase
+        .from("cashflow_units")
+        .delete()
+        .eq("id", id)
+        .then(({ error }) => {
+          if (error) console.error("Supabase delete unit error:", error.message);
+        });
+    }
+
+    return { success: true };
+  };
+
   // Master Data: Categories / Labels CRUD
   const createCategory = (cat: Omit<CashflowCategory, "id">) => {
     const newCat: CashflowCategory = {
@@ -841,7 +909,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const deleteCategory = (id: string) => {
+  // Master Data: Delete Category with validation check
+  const deleteCategory = (id: string): { success: boolean; message?: string } => {
+    const target = categories.find((c) => c.id === id);
+    if (!target) return { success: false, message: "Kategori tidak ditemukan." };
+
+    const linkedUnits = cashflowUnits.filter((u) => u.category === target.code);
+    if (linkedUnits.length > 0) {
+      const sampleNames = linkedUnits.slice(0, 3).map((u) => u.name).join(", ");
+      const extra = linkedUnits.length > 3 ? ` dan ${linkedUnits.length - 3} lainnya` : "";
+      return {
+        success: false,
+        message: `Gak bisa dihapus bro! Kategori '${target.name}' masih dipakai oleh ${linkedUnits.length} Cashflow Item (${sampleNames}${extra}). Pindahkan kategori item tersebut dulu sebelum dihapus.`,
+      };
+    }
+
     setCategories((prev) => prev.filter((c) => c.id !== id));
 
     if (isSupabaseConfigured) {
@@ -853,6 +935,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (error) console.error("Supabase delete category error:", error.message);
         });
     }
+
+    return { success: true };
   };
 
   // Master Data: Create Asset
@@ -883,6 +967,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (error) console.error("Supabase insert asset error:", error.message);
         });
     }
+  };
+
+  // Master Data: Update Asset
+  const updateAsset = (id: string, assetUpdate: Partial<Asset>) => {
+    setAssets((prev) =>
+      prev.map((a) => {
+        if (a.id === id) {
+          const main = assetUpdate.main_value ?? a.main_value;
+          const inc = assetUpdate.income_generated ?? a.income_generated;
+          return {
+            ...a,
+            ...assetUpdate,
+            total_value: main + inc,
+          };
+        }
+        return a;
+      })
+    );
+
+    if (isSupabaseConfigured) {
+      supabase
+        .from("assets")
+        .update(assetUpdate)
+        .eq("id", id)
+        .then(({ error }) => {
+          if (error) console.error("Supabase update asset error:", error.message);
+        });
+    }
+  };
+
+  // Master Data: Delete Asset with validation check
+  const deleteAsset = (id: string): { success: boolean; message?: string } => {
+    const target = assets.find((a) => a.id === id);
+    if (!target) return { success: false, message: "Aset tidak ditemukan." };
+
+    const linkedUnits = cashflowUnits.filter((u) => u.linked_asset_id === id);
+    if (linkedUnits.length > 0) {
+      const names = linkedUnits.map((u) => u.name).join(", ");
+      return {
+        success: false,
+        message: `Gak bisa dihapus bro! Aset '${target.name}' terhubung dengan Cashflow Item (${names}). Putus tautan aset pada cashflow item tersebut terlebih dahulu.`,
+      };
+    }
+
+    setAssets((prev) => prev.filter((a) => a.id !== id));
+
+    if (isSupabaseConfigured) {
+      supabase
+        .from("assets")
+        .delete()
+        .eq("id", id)
+        .then(({ error }) => {
+          if (error) console.error("Supabase delete asset error:", error.message);
+        });
+    }
+
+    return { success: true };
   };
 
   // Wishlist toggle
@@ -940,10 +1081,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addTransaction,
         deleteTransaction,
         createCashflowUnit,
+        updateCashflowUnit,
+        deleteCashflowUnit,
         createCategory,
         updateCategory,
         deleteCategory,
         createAsset,
+        updateAsset,
+        deleteAsset,
         toggleWishlistBought,
       }}
     >

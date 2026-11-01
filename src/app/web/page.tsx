@@ -24,11 +24,22 @@ import {
   Copy,
   Sparkles,
   Tags,
-  LogOut
+  LogOut,
+  Pencil,
+  AlertTriangle,
+  X
 } from "lucide-react";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
-import { CashflowUnit, CashflowCategory, ExpenseCategory, UrgencyLevel, UnitType } from "@/types";
+import { 
+  CashflowUnit, 
+  CashflowCategory, 
+  ExpenseCategory, 
+  UrgencyLevel, 
+  UnitType,
+  Asset,
+  LiquidityTier 
+} from "@/types";
 
 type NavTab = "budget" | "realization" | "actual" | "cashflow-items" | "categories" | "assets";
 
@@ -52,8 +63,14 @@ export default function WebPage() {
     lockCurrentMonth,
     unlockCurrentMonth,
     createCashflowUnit,
+    updateCashflowUnit,
+    deleteCashflowUnit,
     createCategory,
-    deleteCategory
+    updateCategory,
+    deleteCategory,
+    createAsset,
+    updateAsset,
+    deleteAsset
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<NavTab>("budget");
@@ -174,6 +191,129 @@ export default function WebPage() {
     setCatName("");
     setCatCode("");
     setCatDesc("");
+  };
+
+  // Master Data Editing & Dialog States
+  const [editingUnit, setEditingUnit] = useState<CashflowUnit | null>(null);
+  const [editingCategory, setEditingCategory] = useState<CashflowCategory | null>(null);
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [isCreateAssetOpen, setIsCreateAssetOpen] = useState(false);
+  const [validationAlert, setValidationAlert] = useState<{
+    title: string;
+    message: string;
+    suggestArchiveUnitId?: string;
+  } | null>(null);
+
+  // Form state for creating Master Asset
+  const [newAssetName, setNewAssetName] = useState("");
+  const [newAssetTier, setNewAssetTier] = useState<LiquidityTier>("LIQUID");
+  const [newAssetMainValue, setNewAssetMainValue] = useState<number>(0);
+  const [newAssetYield, setNewAssetYield] = useState<number>(0);
+  const [newAssetBucket, setNewAssetBucket] = useState("");
+  const [newAssetIsExternal, setNewAssetIsExternal] = useState(false);
+
+  // Cashflow Unit Actions
+  const handleDeleteUnit = (id: string) => {
+    const res = deleteCashflowUnit(id);
+    if (!res.success) {
+      setValidationAlert({
+        title: "Penghapusan Cashflow Item Ditolak",
+        message: res.message || "Item tidak dapat dihapus karena sudah dipakai dalam anggaran atau transaksi.",
+        suggestArchiveUnitId: id,
+      });
+    }
+  };
+
+  const handleToggleUnitArchive = (unit: CashflowUnit) => {
+    updateCashflowUnit(unit.id, { is_active: !unit.is_active });
+    if (validationAlert?.suggestArchiveUnitId === unit.id) {
+      setValidationAlert(null);
+    }
+  };
+
+  const handleUpdateUnitSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUnit) return;
+    updateCashflowUnit(editingUnit.id, {
+      name: editingUnit.name,
+      code: editingUnit.code,
+      unit_type: editingUnit.unit_type,
+      category: editingUnit.unit_type === "EXPENSE" ? editingUnit.category : undefined,
+      default_urgency: editingUnit.default_urgency,
+      linked_asset_id: editingUnit.unit_type === "ASSET" ? editingUnit.linked_asset_id : undefined,
+      is_active: editingUnit.is_active,
+    });
+    setEditingUnit(null);
+  };
+
+  // Master Category Actions
+  const handleDeleteCategory = (id: string) => {
+    const res = deleteCategory(id);
+    if (!res.success) {
+      setValidationAlert({
+        title: "Penghapusan Kategori Ditolak",
+        message: res.message || "Kategori tidak dapat dihapus karena masih dipakai oleh item cashflow.",
+      });
+    }
+  };
+
+  const handleUpdateCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    updateCategory(editingCategory.id, {
+      name: editingCategory.name.trim(),
+      code: editingCategory.code.trim().toUpperCase(),
+      color: editingCategory.color,
+      description: editingCategory.description?.trim() || undefined,
+    });
+    setEditingCategory(null);
+  };
+
+  // Asset Actions
+  const handleCreateAssetSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAssetName.trim()) return;
+    createAsset({
+      name: newAssetName.trim(),
+      liquidity_tier: newAssetTier,
+      main_value: newAssetMainValue,
+      generating_rate: newAssetYield,
+      income_generated: 0,
+      goal_bucket: newAssetBucket.trim() || undefined,
+      is_external: newAssetIsExternal,
+    });
+    setNewAssetName("");
+    setNewAssetTier("LIQUID");
+    setNewAssetMainValue(0);
+    setNewAssetYield(0);
+    setNewAssetBucket("");
+    setNewAssetIsExternal(false);
+    setIsCreateAssetOpen(false);
+  };
+
+  const handleUpdateAssetSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAsset) return;
+    updateAsset(editingAsset.id, {
+      name: editingAsset.name.trim(),
+      liquidity_tier: editingAsset.liquidity_tier,
+      main_value: editingAsset.main_value,
+      generating_rate: editingAsset.generating_rate,
+      income_generated: editingAsset.income_generated,
+      goal_bucket: editingAsset.goal_bucket?.trim() || undefined,
+      is_external: editingAsset.is_external,
+    });
+    setEditingAsset(null);
+  };
+
+  const handleDeleteAsset = (id: string) => {
+    const res = deleteAsset(id);
+    if (!res.success) {
+      setValidationAlert({
+        title: "Penghapusan Aset Ditolak",
+        message: res.message || "Aset tidak dapat dihapus karena masih terhubung dengan Cashflow Item.",
+      });
+    }
   };
 
   // Filter master units that are not yet in the current month's budget
@@ -1046,9 +1186,14 @@ export default function WebPage() {
 
               {/* Master Units Table (8 cols) */}
               <div className="lg:col-span-8 bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-5 shadow-xs">
-                <h3 className="text-xs font-bold text-[#242921] uppercase tracking-wider mb-3">
-                  Katalog Master Cashflow Items ({cashflowUnits.length})
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-bold text-[#242921] uppercase tracking-wider">
+                    Katalog Master Cashflow Items ({cashflowUnits.length})
+                  </h3>
+                  <span className="text-[10px] text-[#666E61]">
+                    Klik badge status untuk toggle aktif/arsip
+                  </span>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
@@ -1058,11 +1203,13 @@ export default function WebPage() {
                         <th className="py-2.5 px-3">Tipe</th>
                         <th className="py-2.5 px-3">Kategori</th>
                         <th className="py-2.5 px-3">Urgency</th>
+                        <th className="py-2.5 px-3 text-center">Status</th>
+                        <th className="py-2.5 px-3 text-right">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#EEEEEE] text-[#242921]">
                       {cashflowUnits.map((u) => (
-                        <tr key={u.id} className="hover:bg-[#EAE2D6]/20">
+                        <tr key={u.id} className="hover:bg-[#EAE2D6]/20 transition">
                           <td className="py-2.5 px-3 font-mono text-[#666E61]">{u.code}</td>
                           <td className="py-2.5 px-3 font-semibold">{u.name}</td>
                           <td className="py-2.5 px-3">
@@ -1072,6 +1219,40 @@ export default function WebPage() {
                           </td>
                           <td className="py-2.5 px-3 text-[#666E61]">{u.category || "-"}</td>
                           <td className="py-2.5 px-3 font-medium">{u.default_urgency}</td>
+                          <td className="py-2.5 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleUnitArchive(u)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition ${
+                                u.is_active !== false
+                                  ? "bg-[#8B9A6E]/15 text-[#8B9A6E] hover:bg-[#8B9A6E]/25"
+                                  : "bg-[#EEEEEE] text-[#666E61] hover:bg-[#EAE2D6]"
+                              }`}
+                              title="Klik untuk ubah status aktif / arsip"
+                            >
+                              {u.is_active !== false ? "Aktif" : "Archived"}
+                            </button>
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setEditingUnit(u)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-[#8B9A6E] hover:bg-[#8B9A6E]/10 transition"
+                                title="Edit Unit"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUnit(u.id)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                title="Hapus Unit"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1219,13 +1400,24 @@ export default function WebPage() {
                               </span>
                             </td>
                             <td className="py-3 px-3 text-right">
-                              <button
-                                onClick={() => deleteCategory(c.id)}
-                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                                title="Hapus kategori"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCategory(c)}
+                                  className="p-1 rounded-lg text-slate-400 hover:text-[#8B9A6E] hover:bg-[#8B9A6E]/10 transition"
+                                  title="Edit kategori"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCategory(c.id)}
+                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                  title="Hapus kategori"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1249,6 +1441,14 @@ export default function WebPage() {
                     3 Tier Likuiditas: <strong>Liquid (Kas)</strong>, <strong>Semi-Liquid (Investasi)</strong>, dan <strong>Illiquid (Pensiun/BPJS)</strong>.
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateAssetOpen(true)}
+                  className="px-3.5 py-1.5 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tambah Aset Baru
+                </button>
               </div>
 
               <div className="overflow-x-auto">
@@ -1261,11 +1461,12 @@ export default function WebPage() {
                       <th className="py-2.5 px-3">Yield / Return</th>
                       <th className="py-2.5 px-3">Total Value</th>
                       <th className="py-2.5 px-3">Goal Bucket</th>
+                      <th className="py-2.5 px-3 text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EEEEEE] text-[#242921]">
                     {assets.map((ast) => (
-                      <tr key={ast.id} className="hover:bg-[#EAE2D6]/20">
+                      <tr key={ast.id} className="hover:bg-[#EAE2D6]/20 transition">
                         <td className="py-3 px-3 font-bold">{ast.name}</td>
                         <td className="py-3 px-3">
                           <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
@@ -1284,6 +1485,26 @@ export default function WebPage() {
                         </td>
                         <td className="py-3 px-3 font-bold text-[#242921]">{formatRupiah(ast.total_value)}</td>
                         <td className="py-3 px-3 text-[#666E61]">{ast.goal_bucket || "-"}</td>
+                        <td className="py-3 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingAsset(ast)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-[#8B9A6E] hover:bg-[#8B9A6E]/10 transition"
+                              title="Edit Aset"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAsset(ast.id)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                              title="Hapus Aset"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1294,6 +1515,516 @@ export default function WebPage() {
 
         </div>
       </main>
+
+      {/* ============================================================== */}
+      {/* MASTER DATA MODALS */}
+      {/* ============================================================== */}
+
+      {/* MODAL: EDIT CASHFLOW UNIT */}
+      {editingUnit && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 w-full max-w-md shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-[#8B9A6E]" />
+                <h3 className="text-sm font-bold text-[#242921]">Edit Cashflow Item</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingUnit(null)}
+                className="p-1 rounded-lg text-[#666E61] hover:bg-[#EEEEEE] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateUnitSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Kode Unit</label>
+                <input
+                  type="text"
+                  value={editingUnit.code}
+                  onChange={(e) => setEditingUnit({ ...editingUnit, code: e.target.value })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-mono text-[#242921]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Nama Cashflow Item</label>
+                <input
+                  type="text"
+                  value={editingUnit.name}
+                  onChange={(e) => setEditingUnit({ ...editingUnit, name: e.target.value })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Tipe Item</label>
+                <select
+                  value={editingUnit.unit_type}
+                  onChange={(e) => setEditingUnit({ ...editingUnit, unit_type: e.target.value as UnitType })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                >
+                  <option value="EXPENSE">EXPENSE (Pengeluaran Rutin)</option>
+                  <option value="ASSET">ASSET (Alokasi Tabungan/Investasi)</option>
+                  <option value="INCOME">INCOME (Pemasukan)</option>
+                </select>
+              </div>
+
+              {editingUnit.unit_type === "EXPENSE" && (
+                <div>
+                  <label className="text-[#666E61] block mb-1 font-medium">Kategori</label>
+                  <select
+                    value={editingUnit.category || ""}
+                    onChange={(e) => setEditingUnit({ ...editingUnit, category: e.target.value })}
+                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  >
+                    <option value="">Pilih Kategori...</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.code}>
+                        {c.name} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {editingUnit.unit_type === "ASSET" && (
+                <div>
+                  <label className="text-[#666E61] block mb-1 font-medium">Tautkan ke Aset Portofolio (Opsional)</label>
+                  <select
+                    value={editingUnit.linked_asset_id || ""}
+                    onChange={(e) => setEditingUnit({ ...editingUnit, linked_asset_id: e.target.value || undefined })}
+                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  >
+                    <option value="">Tidak ditautkan</option>
+                    {assets.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.liquidity_tier})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Default Urgency</label>
+                <select
+                  value={editingUnit.default_urgency}
+                  onChange={(e) => setEditingUnit({ ...editingUnit, default_urgency: e.target.value as UrgencyLevel })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                >
+                  <option value="HIGHEST">HIGHEST (Urgent)</option>
+                  <option value="HIGH">HIGH</option>
+                  <option value="NORMAL">NORMAL</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="unit-active-status"
+                  checked={editingUnit.is_active !== false}
+                  onChange={(e) => setEditingUnit({ ...editingUnit, is_active: e.target.checked })}
+                  className="rounded border-[#EEEEEE] text-[#8B9A6E] focus:ring-[#8B9A6E] w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="unit-active-status" className="text-xs text-[#242921] font-medium cursor-pointer">
+                  Item Aktif (centang untuk tetap muncul di daftar alokasi anggaran)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EEEEEE]">
+                <button
+                  type="button"
+                  onClick={() => setEditingUnit(null)}
+                  className="px-4 py-2 border border-[#EEEEEE] text-[#666E61] hover:bg-[#EEEEEE]/50 font-medium text-xs rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT MASTER CATEGORY */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 w-full max-w-md shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-[#8B9A6E]" />
+                <h3 className="text-sm font-bold text-[#242921]">Edit Master Kategori</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCategory(null)}
+                className="p-1 rounded-lg text-[#666E61] hover:bg-[#EEEEEE] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateCategorySubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Nama Kategori</label>
+                <input
+                  type="text"
+                  value={editingCategory.name}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Kode Kategori</label>
+                <input
+                  type="text"
+                  value={editingCategory.code}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, code: e.target.value })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-mono text-[#242921]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Pilihan Warna</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="color"
+                    value={editingCategory.color}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, color: e.target.value })}
+                    className="w-8 h-8 rounded-lg cursor-pointer border border-[#EEEEEE] p-0.5 bg-transparent"
+                  />
+                  <span className="font-mono text-xs text-[#666E61]">{editingCategory.color}</span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    "#8B9A6E", "#C2A382", "#D8A47F", "#7E8D85", "#B3A394",
+                    "#A4B494", "#9381FF", "#4E79A7", "#E07A5F", "#F2CC8F",
+                  ].map((swatch) => (
+                    <button
+                      key={swatch}
+                      type="button"
+                      onClick={() => setEditingCategory({ ...editingCategory, color: swatch })}
+                      style={{ backgroundColor: swatch }}
+                      className={`w-5 h-5 rounded-full transition-transform ${
+                        editingCategory.color === swatch ? "ring-2 ring-[#242921] scale-110" : "hover:scale-105"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Deskripsi</label>
+                <textarea
+                  rows={2}
+                  value={editingCategory.description || ""}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EEEEEE]">
+                <button
+                  type="button"
+                  onClick={() => setEditingCategory(null)}
+                  className="px-4 py-2 border border-[#EEEEEE] text-[#666E61] hover:bg-[#EEEEEE]/50 font-medium text-xs rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: TAMBAH MASTER ASET */}
+      {isCreateAssetOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 w-full max-w-md shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
+              <div className="flex items-center gap-2">
+                <Plus className="w-4 h-4 text-[#8B9A6E]" />
+                <h3 className="text-sm font-bold text-[#242921]">Tambah Aset Portofolio</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateAssetOpen(false)}
+                className="p-1 rounded-lg text-[#666E61] hover:bg-[#EEEEEE] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAssetSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Nama Aset</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Reksadana Pasar Uang Bibit, Deposito Jago"
+                  value={newAssetName}
+                  onChange={(e) => setNewAssetName(e.target.value)}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Tier Likuiditas</label>
+                <select
+                  value={newAssetTier}
+                  onChange={(e) => setNewAssetTier(e.target.value as LiquidityTier)}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                >
+                  <option value="LIQUID">LIQUID (Kas / Rekening Giro / Siap Pakai)</option>
+                  <option value="SEMI_LIQUID">SEMI_LIQUID (Reksadana / Saham / Emas)</option>
+                  <option value="ILLIQUID">ILLIQUID (Pensiun / Properti / BPJS Ketenagakerjaan)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Modal Pokok (Main Value)</label>
+                <CurrencyInput
+                  value={newAssetMainValue}
+                  onChange={setNewAssetMainValue}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-semibold text-[#242921]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[#666E61] block mb-1 font-medium">Yield / Return (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g. 5.5"
+                    value={newAssetYield}
+                    onChange={(e) => setNewAssetYield(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[#666E61] block mb-1 font-medium">Goal Bucket</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dana Darurat"
+                    value={newAssetBucket}
+                    onChange={(e) => setNewAssetBucket(e.target.value)}
+                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="new-asset-external"
+                  checked={newAssetIsExternal}
+                  onChange={(e) => setNewAssetIsExternal(e.target.checked)}
+                  className="rounded border-[#EEEEEE] text-[#8B9A6E] focus:ring-[#8B9A6E] w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="new-asset-external" className="text-xs text-[#242921] font-medium cursor-pointer">
+                  Aset Eksternal (Di luar mutasi rekening operasional harian)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EEEEEE]">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateAssetOpen(false)}
+                  className="px-4 py-2 border border-[#EEEEEE] text-[#666E61] hover:bg-[#EEEEEE]/50 font-medium text-xs rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                >
+                  Simpan Aset
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT MASTER ASET */}
+      {editingAsset && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 w-full max-w-md shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-[#8B9A6E]" />
+                <h3 className="text-sm font-bold text-[#242921]">Edit Aset Portofolio</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingAsset(null)}
+                className="p-1 rounded-lg text-[#666E61] hover:bg-[#EEEEEE] transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateAssetSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Nama Aset</label>
+                <input
+                  type="text"
+                  required
+                  value={editingAsset.name}
+                  onChange={(e) => setEditingAsset({ ...editingAsset, name: e.target.value })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Tier Likuiditas</label>
+                <select
+                  value={editingAsset.liquidity_tier}
+                  onChange={(e) => setEditingAsset({ ...editingAsset, liquidity_tier: e.target.value as LiquidityTier })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                >
+                  <option value="LIQUID">LIQUID (Kas / Rekening Giro)</option>
+                  <option value="SEMI_LIQUID">SEMI_LIQUID (Reksadana / Saham)</option>
+                  <option value="ILLIQUID">ILLIQUID (Pensiun / Properti)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Modal Pokok (Main Value)</label>
+                <CurrencyInput
+                  value={editingAsset.main_value}
+                  onChange={(val) => setEditingAsset({ ...editingAsset, main_value: val })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs font-semibold text-[#242921]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[#666E61] block mb-1 font-medium">Yield / Return (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingAsset.generating_rate}
+                    onChange={(e) => setEditingAsset({ ...editingAsset, generating_rate: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[#666E61] block mb-1 font-medium">Goal Bucket</label>
+                  <input
+                    type="text"
+                    value={editingAsset.goal_bucket || ""}
+                    onChange={(e) => setEditingAsset({ ...editingAsset, goal_bucket: e.target.value })}
+                    className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[#666E61] block mb-1 font-medium">Income Generated (Akumulasi Return)</label>
+                <CurrencyInput
+                  value={editingAsset.income_generated}
+                  onChange={(val) => setEditingAsset({ ...editingAsset, income_generated: val })}
+                  className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="edit-asset-external"
+                  checked={editingAsset.is_external || false}
+                  onChange={(e) => setEditingAsset({ ...editingAsset, is_external: e.target.checked })}
+                  className="rounded border-[#EEEEEE] text-[#8B9A6E] focus:ring-[#8B9A6E] w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="edit-asset-external" className="text-xs text-[#242921] font-medium cursor-pointer">
+                  Aset Eksternal
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EEEEEE]">
+                <button
+                  type="button"
+                  onClick={() => setEditingAsset(null)}
+                  className="px-4 py-2 border border-[#EEEEEE] text-[#666E61] hover:bg-[#EEEEEE]/50 font-medium text-xs rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: VALIDATION ALERT (REFERENTIAL INTEGRITY) */}
+      {validationAlert && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-[#242921]">{validationAlert.title}</h3>
+                <p className="text-xs text-[#666E61] leading-relaxed">
+                  {validationAlert.message}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EEEEEE]">
+              {validationAlert.suggestArchiveUnitId && (() => {
+                const unit = cashflowUnits.find((u) => u.id === validationAlert.suggestArchiveUnitId);
+                if (unit && unit.is_active !== false) {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleUnitArchive(unit)}
+                      className="px-4 py-2 bg-[#8B9A6E] hover:bg-[#7A895F] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                    >
+                      Arsipkan (Nonaktifkan) Saja
+                    </button>
+                  );
+                }
+                return null;
+              })()}
+              <button
+                type="button"
+                onClick={() => setValidationAlert(null)}
+                className="px-4 py-2 border border-[#EEEEEE] text-[#242921] hover:bg-[#EEEEEE]/60 font-medium text-xs rounded-xl transition"
+              >
+                Paham & Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
