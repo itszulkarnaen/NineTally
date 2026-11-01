@@ -437,7 +437,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!payload || !payload.type) return;
 
       if (payload.type === "TX_ADDED") {
-        const { newTx, unitTotal, linkedAssetUpdate } = payload;
+        const { newTx, unitTotal, newBcaBalance, linkedAssetUpdate } = payload;
         setTransactions((prev) => {
           if (prev.some((t) => t.id === newTx.id)) return prev;
           return [newTx, ...prev];
@@ -450,6 +450,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...prev,
             [newTx.period_id]: {
               ...period,
+              real_bca_balance: newBcaBalance !== undefined ? newBcaBalance : period.real_bca_balance,
               items: period.items.map((i) =>
                 i.cashflow_unit_id === newTx.cashflow_unit_id
                   ? {
@@ -473,7 +474,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (payload.type === "TX_DELETED") {
-        const { txId, periodId, cashflowUnitId, unitTotal, linkedAssetUpdate } = payload;
+        const { txId, periodId, cashflowUnitId, unitTotal, newBcaBalance, linkedAssetUpdate } = payload;
         setTransactions((prev) => prev.filter((t) => t.id !== txId));
 
         setPeriodsMap((prev) => {
@@ -483,6 +484,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...prev,
             [periodId]: {
               ...period,
+              real_bca_balance: newBcaBalance !== undefined ? newBcaBalance : period.real_bca_balance,
               items: period.items.map((i) =>
                 i.cashflow_unit_id === cashflowUnitId
                   ? {
@@ -1112,12 +1114,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
+    // Auto-sync bank balance: Deduct expense, or add income
+    const currentPeriod = periodsMap[tx.period_id] || currentMonthData;
+    const currentBca = currentPeriod.real_bca_balance || 0;
+    const isIncome = unit?.unit_type === "INCOME";
+    const delta = isIncome ? tx.amount : -tx.amount;
+    const newBcaBalance = currentBca + delta;
+
     setPeriodsMap((prev) => {
       const current = prev[tx.period_id] || currentMonthData;
       return {
         ...prev,
         [tx.period_id]: {
           ...current,
+          real_bca_balance: newBcaBalance,
           items: current.items.map((i) =>
             i.cashflow_unit_id === tx.cashflow_unit_id
               ? {
@@ -1162,6 +1172,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .then(({ error }) => {
           if (error) console.error("Supabase sync item realization error:", error.message);
         });
+
+      // Persist deducted bank balance to Supabase budget_periods
+      supabase
+        .from("budget_periods")
+        .update({
+          real_bca_balance: newBcaBalance,
+        })
+        .eq("period_month", tx.period_id)
+        .then(({ error }) => {
+          if (error) console.error("Supabase update bank balance on tx error:", error.message);
+        });
     }
 
     // Broadcast instant update to all other open screens (Web, Mobile, etc.)
@@ -1171,6 +1192,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       periodId: tx.period_id,
       cashflowUnitId: tx.cashflow_unit_id,
       unitTotal,
+      newBcaBalance,
       linkedAssetUpdate,
     });
   };
@@ -1207,12 +1229,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
+    // Refund / restore bank balance on delete transaction
+    const currentPeriod = periodsMap[targetTx.period_id] || currentMonthData;
+    const currentBca = currentPeriod.real_bca_balance || 0;
+    const isIncome = unit?.unit_type === "INCOME";
+    const refundDelta = isIncome ? -targetTx.amount : targetTx.amount;
+    const newBcaBalance = currentBca + refundDelta;
+
     setPeriodsMap((prev) => {
       const current = prev[targetTx.period_id] || currentMonthData;
       return {
         ...prev,
         [targetTx.period_id]: {
           ...current,
+          real_bca_balance: newBcaBalance,
           items: current.items.map((i) =>
             i.cashflow_unit_id === targetTx.cashflow_unit_id
               ? {
@@ -1251,6 +1281,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .then(({ error }) => {
           if (error) console.error("Supabase sync item on delete tx error:", error.message);
         });
+
+      // Restore bank balance in Supabase budget_periods
+      supabase
+        .from("budget_periods")
+        .update({
+          real_bca_balance: newBcaBalance,
+        })
+        .eq("period_month", targetTx.period_id)
+        .then(({ error }) => {
+          if (error) console.error("Supabase restore bank balance on tx delete error:", error.message);
+        });
     }
 
     // Broadcast instant delete to all other open screens (Web, Mobile, etc.)
@@ -1260,6 +1301,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       periodId: targetTx.period_id,
       cashflowUnitId: targetTx.cashflow_unit_id,
       unitTotal,
+      newBcaBalance,
       linkedAssetUpdate,
     });
   };

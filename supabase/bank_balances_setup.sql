@@ -44,3 +44,4 @@ INSERT INTO public.bank_accounts (id, bank_name, account_name, account_number, c
 ('bank-bca', 'BCA', 'BCA Utama Operasional', '1234567890', '#2196F3', TRUE, 1),
 ('bank-jago', 'Bank Jago', 'Jago Pocket Pengeluaran', '9876543210', '#90CAF9', TRUE, 2)
 ON CONFLICT (id) DO NOTHING;
+
