@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Lock, Mail, Eye, EyeOff, Loader2, AlertCircle, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("its.zulkarnaen@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +81,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="its.zulkarnaen@gmail.com"
+              placeholder="nama@email.com"
               className="w-full bg-[#EAE2D6]/30 border border-[#EEEEEE] rounded-xl px-3.5 py-2.5 text-xs font-medium text-[#242921] focus:outline-none focus:border-[#8B9A6E] focus:ring-1 focus:ring-[#8B9A6E] transition"
             />
           </div>
@@ -128,9 +128,10 @@ export default function LoginPage() {
         {/* Security Footer */}
         <div className="pt-2 border-t border-[#EEEEEE] flex items-center justify-center gap-1.5 text-[10px] text-[#666E61]">
           <ShieldCheck className="w-3.5 h-3.5 text-[#8B9A6E]" />
-          <span>Single-User Private Cloud • SHA-256 Auth</span>
+          <span>Single-User Private Cloud</span>
         </div>
       </div>
     </div>
   );
 }
+
