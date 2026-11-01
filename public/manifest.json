@@ -1,0 +1,18 @@
+{
+  "name": "Self Cash Flow & Net Worth",
+  "short_name": "CashFlow",
+  "description": "Personal finance budgeting and net worth tracker",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#EAE2D6",
+  "theme_color": "#EAE2D6",
+  "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
