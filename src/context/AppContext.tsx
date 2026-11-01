@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { Asset, BudgetPeriodItem, CashflowCategory, CashflowTransaction, CashflowUnit, WishlistItem, PeriodStatus, UrgencyLevel } from "@/types";
 import { initialAssets, initialCashflowUnits, initialWishlists, initialTransactions, initialCategories } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
@@ -318,6 +319,320 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [isLoaded, assets, cashflowUnits, categories, wishlists, transactions, periodsMap, selectedMonth]);
 
+  // ============================================================================
+  // REALTIME WEBSOCKET SYNC (Supabase Realtime Broadcast & Postgres Changes)
+  // ============================================================================
+  const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+
+  const broadcastSync = (payload: any) => {
+    if (realtimeChannelRef.current) {
+      realtimeChannelRef.current.send({
+        type: "broadcast",
+        event: "NINETALLY_SYNC",
+        payload,
+      });
+    }
+  };
+
+  const refreshTransactionsFromCloud = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { data } = await supabase
+        .from("cashflow_transactions")
+        .select("*")
+        .order("date", { ascending: false });
+
+      if (data) {
+        const mapped: CashflowTransaction[] = data.map((t: any) => ({
+          id: t.id,
+          period_id: t.period_id,
+          cashflow_unit_id: t.cashflow_unit_id,
+          amount: Number(t.amount) || 0,
+          date: t.date,
+          notes: t.notes || undefined,
+          created_at: t.created_at,
+        }));
+        setTransactions(mapped);
+
+        // Recalculate realization and actuals for items in periodsMap
+        setPeriodsMap((prev) => {
+          const next = { ...prev };
+          Object.keys(next).forEach((mKey) => {
+            const p = next[mKey];
+            if (!p || !p.items) return;
+            const monthTx = mapped.filter((t) => t.period_id === mKey);
+            next[mKey] = {
+              ...p,
+              items: p.items.map((item) => {
+                const total = monthTx
+                  .filter((t) => t.cashflow_unit_id === item.cashflow_unit_id)
+                  .reduce((s, t) => s + t.amount, 0);
+                if (total > 0 || monthTx.some((t) => t.cashflow_unit_id === item.cashflow_unit_id)) {
+                  return {
+                    ...item,
+                    realization_amount: total,
+                    projection_amount: total,
+                    actual_amount: total,
+                    is_realized: total > 0,
+                  };
+                }
+                return item;
+              }),
+            };
+          });
+          return next;
+        });
+      }
+    } catch (e) {
+      console.warn("Supabase refresh transactions error:", e);
+    }
+  };
+
+  const refreshBudgetItemsFromCloud = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { data } = await supabase
+        .from("budget_period_items")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      if (data) {
+        setPeriodsMap((prev) => {
+          const next = { ...prev };
+          data.forEach((item: any) => {
+            const p = next[item.period_id];
+            if (!p) return;
+            const existingIdx = p.items.findIndex((i) => i.id === item.id);
+            const mappedItem: BudgetPeriodItem = {
+              id: item.id,
+              period_id: item.period_id,
+              cashflow_unit_id: item.cashflow_unit_id,
+              budget_amount: Number(item.budget_amount) || 0,
+              realization_amount: Number(item.realization_amount ?? item.budget_amount) || 0,
+              projection_amount: Number(item.projection_amount ?? item.budget_amount) || 0,
+              actual_amount: Number(item.actual_amount ?? item.budget_amount) || 0,
+              urgency: item.urgency,
+              is_realized: Boolean(item.is_realized),
+              notes: item.notes || undefined,
+              sort_order: Number(item.sort_order) || 0,
+            };
+            if (existingIdx >= 0) {
+              p.items[existingIdx] = mappedItem;
+            } else {
+              p.items.push(mappedItem);
+            }
+          });
+          return next;
+        });
+      }
+    } catch (e) {
+      console.warn("Supabase refresh budget items error:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    // Connect to Supabase Realtime WebSocket Channel
+    const channel = supabase.channel("ninetally-realtime-sync", {
+      config: { broadcast: { self: false } },
+    });
+
+    // 1. WebSocket Broadcast Listener (instant sub-second sync between Web & Mobile)
+    channel.on("broadcast", { event: "NINETALLY_SYNC" }, (msg) => {
+      const payload = msg.payload;
+      if (!payload || !payload.type) return;
+
+      if (payload.type === "TX_ADDED") {
+        const { newTx, unitTotal, linkedAssetUpdate } = payload;
+        setTransactions((prev) => {
+          if (prev.some((t) => t.id === newTx.id)) return prev;
+          return [newTx, ...prev];
+        });
+
+        setPeriodsMap((prev) => {
+          const period = prev[newTx.period_id];
+          if (!period) return prev;
+          return {
+            ...prev,
+            [newTx.period_id]: {
+              ...period,
+              items: period.items.map((i) =>
+                i.cashflow_unit_id === newTx.cashflow_unit_id
+                  ? {
+                      ...i,
+                      realization_amount: unitTotal,
+                      projection_amount: unitTotal,
+                      actual_amount: unitTotal,
+                      is_realized: true,
+                    }
+                  : i
+              ),
+            },
+          };
+        });
+
+        if (linkedAssetUpdate) {
+          setAssets((prev) =>
+            prev.map((a) => (a.id === linkedAssetUpdate.id ? { ...a, ...linkedAssetUpdate } : a))
+          );
+        }
+      }
+
+      if (payload.type === "TX_DELETED") {
+        const { txId, periodId, cashflowUnitId, unitTotal, linkedAssetUpdate } = payload;
+        setTransactions((prev) => prev.filter((t) => t.id !== txId));
+
+        setPeriodsMap((prev) => {
+          const period = prev[periodId];
+          if (!period) return prev;
+          return {
+            ...prev,
+            [periodId]: {
+              ...period,
+              items: period.items.map((i) =>
+                i.cashflow_unit_id === cashflowUnitId
+                  ? {
+                      ...i,
+                      realization_amount: unitTotal,
+                      projection_amount: unitTotal,
+                      actual_amount: unitTotal,
+                      is_realized: unitTotal > 0,
+                    }
+                  : i
+              ),
+            },
+          };
+        });
+
+        if (linkedAssetUpdate) {
+          setAssets((prev) =>
+            prev.map((a) => (a.id === linkedAssetUpdate.id ? { ...a, ...linkedAssetUpdate } : a))
+          );
+        }
+      }
+
+      if (payload.type === "ITEM_REALIZED_TOGGLED") {
+        const { periodId, itemId, isRealized } = payload;
+        setPeriodsMap((prev) => {
+          const period = prev[periodId];
+          if (!period) return prev;
+          return {
+            ...prev,
+            [periodId]: {
+              ...period,
+              items: period.items.map((i) =>
+                i.id === itemId ? { ...i, is_realized: isRealized } : i
+              ),
+            },
+          };
+        });
+      }
+
+      if (payload.type === "ITEM_REALIZATION_UPDATED") {
+        const { periodId, itemId, amount } = payload;
+        setPeriodsMap((prev) => {
+          const period = prev[periodId];
+          if (!period) return prev;
+          return {
+            ...prev,
+            [periodId]: {
+              ...period,
+              items: period.items.map((i) =>
+                i.id === itemId
+                  ? {
+                      ...i,
+                      realization_amount: amount,
+                      projection_amount: amount,
+                      actual_amount: amount,
+                    }
+                  : i
+              ),
+            },
+          };
+        });
+      }
+
+      if (payload.type === "BUDGET_SAVED") {
+        const { periodId, items } = payload;
+        setPeriodsMap((prev) => {
+          const period = prev[periodId];
+          if (!period) return prev;
+          return {
+            ...prev,
+            [periodId]: {
+              ...period,
+              items,
+            },
+          };
+        });
+      }
+
+      if (payload.type === "PERIOD_STATUS_UPDATED") {
+        const { periodId, status } = payload;
+        setPeriodsMap((prev) => {
+          const period = prev[periodId];
+          if (!period) return prev;
+          return {
+            ...prev,
+            [periodId]: {
+              ...period,
+              status,
+            },
+          };
+        });
+      }
+
+      if (payload.type === "MONTH_INCOME_UPDATED") {
+        const { periodId, salary, additional } = payload;
+        setPeriodsMap((prev) => {
+          const period = prev[periodId];
+          if (!period) return prev;
+          return {
+            ...prev,
+            [periodId]: {
+              ...period,
+              salary_budget: salary,
+              additional_budget: additional,
+            },
+          };
+        });
+      }
+
+      if (payload.type === "MASTER_DATA_CHANGED") {
+        supabase.from("cashflow_units").select("*").then(({ data }) => {
+          if (data) setCashflowUnits(data);
+        });
+        supabase.from("cashflow_categories").select("*").then(({ data }) => {
+          if (data) setCategories(data);
+        });
+        supabase.from("assets").select("*").then(({ data }) => {
+          if (data) setAssets(data);
+        });
+      }
+    });
+
+    // 2. Also listen for Postgres CDC changes directly
+    channel
+      .on("postgres_changes", { event: "*", schema: "public", table: "cashflow_transactions" }, () => {
+        refreshTransactionsFromCloud();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "budget_period_items" }, () => {
+        refreshBudgetItemsFromCloud();
+      });
+
+    channel.subscribe((status) => {
+      console.log("Supabase Realtime Channel Status:", status);
+    });
+
+    realtimeChannelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      realtimeChannelRef.current = null;
+    };
+  }, [isLoaded]);
+
   // Current active period object
   const currentMonthData: MonthPeriodData = periodsMap[selectedMonth] || {
     period_month: selectedMonth,
@@ -494,6 +809,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
       };
     });
+
+    broadcastSync({
+      type: "MONTH_INCOME_UPDATED",
+      periodId: selectedMonth,
+      salary: salaryBudget,
+      additional: additionalBudget,
+    });
   };
 
   // 6. Explicit Save Button Handler
@@ -538,6 +860,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
         }
       }
+
+      broadcastSync({
+        type: "BUDGET_SAVED",
+        periodId: selectedMonth,
+        items: (periodsMap[selectedMonth] || currentMonthData).items,
+      });
+
       return true;
     } catch {
       return false;
@@ -560,6 +889,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
       };
     });
+
+    broadcastSync({
+      type: "PERIOD_STATUS_UPDATED",
+      periodId: selectedMonth,
+      status: "LOCKED",
+    });
   };
 
   const unlockCurrentMonth = () => {
@@ -573,23 +908,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
       };
     });
+
+    broadcastSync({
+      type: "PERIOD_STATUS_UPDATED",
+      periodId: selectedMonth,
+      status: "ACTIVE",
+    });
   };
 
   // 8. Mobile Checklist Toggle
   const toggleItemRealized = (itemId: string) => {
     if (isCurrentMonthLocked) return;
 
+    const current = periodsMap[selectedMonth] || currentMonthData;
+    const target = current.items.find((i) => i.id === itemId);
+    const nextRealized = target ? !target.is_realized : true;
+
     setPeriodsMap((prev) => {
-      const current = prev[selectedMonth] || currentMonthData;
+      const curr = prev[selectedMonth] || currentMonthData;
       return {
         ...prev,
         [selectedMonth]: {
-          ...current,
-          items: current.items.map((i) =>
-            i.id === itemId ? { ...i, is_realized: !i.is_realized } : i
+          ...curr,
+          items: curr.items.map((i) =>
+            i.id === itemId ? { ...i, is_realized: nextRealized } : i
           ),
         },
       };
+    });
+
+    if (isSupabaseConfigured) {
+      supabase
+        .from("budget_period_items")
+        .update({ is_realized: nextRealized })
+        .eq("id", itemId)
+        .then(({ error }) => {
+          if (error) console.error("Supabase toggle item error:", error.message);
+        });
+    }
+
+    broadcastSync({
+      type: "ITEM_REALIZED_TOGGLED",
+      periodId: selectedMonth,
+      itemId,
+      isRealized: nextRealized,
     });
   };
 
@@ -640,6 +1002,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
       };
     });
+
+    if (isSupabaseConfigured) {
+      supabase
+        .from("budget_period_items")
+        .update({
+          realization_amount: newRealization,
+          projection_amount: newRealization,
+          actual_amount: newRealization,
+        })
+        .eq("id", itemId)
+        .then(({ error }) => {
+          if (error) console.error("Supabase update item realization error:", error.message);
+        });
+    }
+
+    broadcastSync({
+      type: "ITEM_REALIZATION_UPDATED",
+      periodId: selectedMonth,
+      itemId,
+      amount: newRealization,
+    });
   };
 
   // Backward compatibility alias
@@ -664,21 +1047,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .reduce((sum, t) => sum + t.amount, 0);
 
     // Auto-sync with linked Asset if unit is ASSET
+    let linkedAssetUpdate: { id: string; main_value: number; total_value: number } | undefined;
     const unit = cashflowUnits.find((u) => u.id === tx.cashflow_unit_id);
     if (unit?.unit_type === "ASSET" && unit.linked_asset_id) {
-      setAssets((prevAssets) =>
-        prevAssets.map((ast) => {
-          if (ast.id === unit.linked_asset_id) {
-            const newMain = ast.main_value + tx.amount;
-            return {
-              ...ast,
-              main_value: newMain,
-              total_value: newMain + ast.income_generated,
-            };
-          }
-          return ast;
-        })
-      );
+      const targetAsset = assets.find((a) => a.id === unit.linked_asset_id);
+      if (targetAsset) {
+        const newMain = targetAsset.main_value + tx.amount;
+        linkedAssetUpdate = {
+          id: targetAsset.id,
+          main_value: newMain,
+          total_value: newMain + targetAsset.income_generated,
+        };
+        setAssets((prevAssets) =>
+          prevAssets.map((ast) => (ast.id === targetAsset.id ? { ...ast, ...linkedAssetUpdate } : ast))
+        );
+      }
     }
 
     setPeriodsMap((prev) => {
@@ -716,7 +1099,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .then(({ error }) => {
           if (error) console.error("Supabase insert tx error:", error.message);
         });
+
+      // Keep budget_period_items table in Supabase 100% synchronized
+      supabase
+        .from("budget_period_items")
+        .update({
+          realization_amount: unitTotal,
+          projection_amount: unitTotal,
+          actual_amount: unitTotal,
+          is_realized: true,
+        })
+        .eq("period_id", tx.period_id)
+        .eq("cashflow_unit_id", tx.cashflow_unit_id)
+        .then(({ error }) => {
+          if (error) console.error("Supabase sync item realization error:", error.message);
+        });
     }
+
+    // Broadcast instant update to all other open screens (Web, Mobile, etc.)
+    broadcastSync({
+      type: "TX_ADDED",
+      newTx,
+      periodId: tx.period_id,
+      cashflowUnitId: tx.cashflow_unit_id,
+      unitTotal,
+      linkedAssetUpdate,
+    });
   };
 
   const deleteTransaction = (txId: string) => {
@@ -734,21 +1142,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .reduce((sum, t) => sum + t.amount, 0);
 
     // Revert asset sync if ASSET
+    let linkedAssetUpdate: { id: string; main_value: number; total_value: number } | undefined;
     const unit = cashflowUnits.find((u) => u.id === targetTx.cashflow_unit_id);
     if (unit?.unit_type === "ASSET" && unit.linked_asset_id) {
-      setAssets((prevAssets) =>
-        prevAssets.map((ast) => {
-          if (ast.id === unit.linked_asset_id) {
-            const newMain = Math.max(0, ast.main_value - targetTx.amount);
-            return {
-              ...ast,
-              main_value: newMain,
-              total_value: newMain + ast.income_generated,
-            };
-          }
-          return ast;
-        })
-      );
+      const targetAsset = assets.find((a) => a.id === unit.linked_asset_id);
+      if (targetAsset) {
+        const newMain = Math.max(0, targetAsset.main_value - targetTx.amount);
+        linkedAssetUpdate = {
+          id: targetAsset.id,
+          main_value: newMain,
+          total_value: newMain + targetAsset.income_generated,
+        };
+        setAssets((prevAssets) =>
+          prevAssets.map((ast) => (ast.id === targetAsset.id ? { ...ast, ...linkedAssetUpdate } : ast))
+        );
+      }
     }
 
     setPeriodsMap((prev) => {
@@ -780,7 +1188,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .then(({ error }) => {
           if (error) console.error("Supabase delete tx error:", error.message);
         });
+
+      // Synchronize budget_period_items table in Supabase
+      supabase
+        .from("budget_period_items")
+        .update({
+          realization_amount: unitTotal,
+          projection_amount: unitTotal,
+          actual_amount: unitTotal,
+          is_realized: unitTotal > 0,
+        })
+        .eq("period_id", targetTx.period_id)
+        .eq("cashflow_unit_id", targetTx.cashflow_unit_id)
+        .then(({ error }) => {
+          if (error) console.error("Supabase sync item on delete tx error:", error.message);
+        });
     }
+
+    // Broadcast instant delete to all other open screens (Web, Mobile, etc.)
+    broadcastSync({
+      type: "TX_DELETED",
+      txId,
+      periodId: targetTx.period_id,
+      cashflowUnitId: targetTx.cashflow_unit_id,
+      unitTotal,
+      linkedAssetUpdate,
+    });
   };
 
   // Master Data: Create Cashflow Unit
@@ -809,6 +1242,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (error) console.error("Supabase insert unit error:", error.message);
         });
     }
+
+    broadcastSync({ type: "MASTER_DATA_CHANGED" });
   };
 
   // Master Data: Update Cashflow Unit
@@ -826,6 +1261,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (error) console.error("Supabase update unit error:", error.message);
         });
     }
+
+    broadcastSync({ type: "MASTER_DATA_CHANGED" });
   };
 
   // Master Data: Delete Cashflow Unit with strict validation
@@ -872,6 +1309,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
     }
 
+    broadcastSync({ type: "MASTER_DATA_CHANGED" });
     return { success: true };
   };
 
@@ -891,6 +1329,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (error) console.error("Supabase insert category error:", error.message);
         });
     }
+
+    broadcastSync({ type: "MASTER_DATA_CHANGED" });
   };
 
   const updateCategory = (id: string, catUpdate: Partial<CashflowCategory>) => {
@@ -907,6 +1347,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (error) console.error("Supabase update category error:", error.message);
         });
     }
+
+    broadcastSync({ type: "MASTER_DATA_CHANGED" });
   };
 
   // Master Data: Delete Category with validation check
@@ -936,6 +1378,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
     }
 
+    broadcastSync({ type: "MASTER_DATA_CHANGED" });
     return { success: true };
   };
 
@@ -967,6 +1410,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (error) console.error("Supabase insert asset error:", error.message);
         });
     }
+
+    broadcastSync({ type: "MASTER_DATA_CHANGED" });
   };
 
   // Master Data: Update Asset
@@ -995,6 +1440,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (error) console.error("Supabase update asset error:", error.message);
         });
     }
+
+    broadcastSync({ type: "MASTER_DATA_CHANGED" });
   };
 
   // Master Data: Delete Asset with validation check
@@ -1023,6 +1470,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
     }
 
+    broadcastSync({ type: "MASTER_DATA_CHANGED" });
     return { success: true };
   };
 

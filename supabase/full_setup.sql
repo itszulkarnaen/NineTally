@@ -225,3 +225,24 @@ INSERT INTO public.wishlists (id, item_name, target_amount, priority, is_bought)
 ('wl-4', 'Dispenser', 2500000, 4, FALSE),
 ('wl-5', 'Kompor', 2000000, 5, FALSE)
 ON CONFLICT (id) DO NOTHING;
+
+-- ==============================================================================
+-- 5. ENABLE SUPABASE REALTIME REPLICATION (CHANGE DATA CAPTURE / WEBSOCKETS)
+-- ==============================================================================
+DO $$
+BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.cashflow_transactions;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.budget_period_items;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.budget_periods;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.cashflow_units;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.assets;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.cashflow_categories;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+    WHEN others THEN NULL;
+END $$;
+
+ALTER TABLE public.cashflow_transactions REPLICA IDENTITY FULL;
+ALTER TABLE public.budget_period_items REPLICA IDENTITY FULL;
+ALTER TABLE public.budget_periods REPLICA IDENTITY FULL;
+
