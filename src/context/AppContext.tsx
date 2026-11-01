@@ -198,7 +198,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // Step B: If Supabase is configured, fetch live cloud data
-      if (isSupabaseConfigured) {
+      if (!isSupabaseConfigured) {
+        console.warn("⚠️ NineTally: Supabase env vars not found or incomplete. Running in offline/localStorage mode.");
+      } else {
         try {
           const [catRes, assetRes, unitRes, periodRes, itemRes, txRes, wlRes] = await Promise.all([
             supabase.from("cashflow_categories").select("*").order("sort_order", { ascending: true }),
@@ -246,9 +248,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               }))
             );
           }
-          if (txRes.data && txRes.data.length > 0) {
-            setTransactions(
-              txRes.data.map((t: any) => ({
+          
+          const liveTransactions: CashflowTransaction[] = txRes.data
+            ? txRes.data.map((t: any) => ({
                 id: t.id,
                 period_id: t.period_id,
                 cashflow_unit_id: t.cashflow_unit_id,
@@ -257,7 +259,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 notes: t.notes || undefined,
                 created_at: t.created_at,
               }))
-            );
+            : [];
+
+          if (txRes.data) {
+            setTransactions(liveTransactions);
           }
 
           if (periodRes.data && periodRes.data.length > 0) {
@@ -265,6 +270,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const itemsData = itemRes.data || [];
 
             periodRes.data.forEach((p: any) => {
+              const monthTx = liveTransactions.filter((t) => t.period_id === p.period_month);
               periodsDictionary[p.period_month] = {
                 period_month: p.period_month,
                 status: p.status,
@@ -274,19 +280,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 real_jago_balance: Number(p.real_jago_balance) || 0,
                 items: itemsData
                   .filter((item: any) => item.period_id === p.period_month)
-                  .map((item: any) => ({
-                    id: item.id,
-                    period_id: item.period_id,
-                    cashflow_unit_id: item.cashflow_unit_id,
-                    budget_amount: Number(item.budget_amount) || 0,
-                    realization_amount: Number(item.realization_amount ?? item.budget_amount) || 0,
-                    projection_amount: Number(item.projection_amount ?? item.budget_amount) || 0,
-                    actual_amount: Number(item.actual_amount ?? item.budget_amount) || 0,
-                    urgency: item.urgency,
-                    is_realized: Boolean(item.is_realized),
-                    notes: item.notes || undefined,
-                    sort_order: Number(item.sort_order) || 0,
-                  })),
+                  .map((item: any) => {
+                    const txSum = monthTx
+                      .filter((t) => t.cashflow_unit_id === item.cashflow_unit_id)
+                      .reduce((sum, t) => sum + t.amount, 0);
+                    const hasTx = monthTx.some((t) => t.cashflow_unit_id === item.cashflow_unit_id);
+                    const finalRealization = hasTx ? txSum : Number(item.realization_amount ?? item.budget_amount) || 0;
+                    return {
+                      id: item.id,
+                      period_id: item.period_id,
+                      cashflow_unit_id: item.cashflow_unit_id,
+                      budget_amount: Number(item.budget_amount) || 0,
+                      realization_amount: finalRealization,
+                      projection_amount: finalRealization,
+                      actual_amount: finalRealization,
+                      urgency: item.urgency,
+                      is_realized: hasTx ? txSum > 0 : Boolean(item.is_realized),
+                      notes: item.notes || undefined,
+                      sort_order: Number(item.sort_order) || 0,
+                    };
+                  }),
               };
             });
             setPeriodsMap((prev) => ({ ...prev, ...periodsDictionary }));
