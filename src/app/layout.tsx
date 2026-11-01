@@ -14,17 +14,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Self Cash Flow & Net Worth",
+  title: "NineTally - Self Cash Flow & Net Worth",
   description: "Personal finance, budgeting, and net worth tracker (PWA & Web Console)",
   manifest: "/manifest.json",
   icons: {
-    icon: "/app-icon.png",
-    apple: "/app-icon.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "32x32" },
+      { url: "/app-icon.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "SelfCashFlow",
+    title: "NineTally",
   },
 };
 
