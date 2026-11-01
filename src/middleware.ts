@@ -5,14 +5,11 @@ import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Bypass public files, icons, fonts, and auth API
+  // 1. Bypass public files, static assets (.png, .ico, etc.), and auth API
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/app-icon") ||
-    pathname.startsWith("/icon") ||
-    pathname.startsWith("/favicon.ico") ||
-    pathname.startsWith("/manifest.json")
+    /\.(png|jpg|jpeg|gif|svg|ico|webp|json)$/i.test(pathname)
   ) {
     return NextResponse.next();
   }
@@ -45,9 +42,9 @@ export const config = {
      * Match all request paths except:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - static assets (.png, .svg, .ico, etc.)
      */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json)$).*)",
   ],
 };
 
