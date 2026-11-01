@@ -29,7 +29,8 @@ import {
   EyeOff,
   Landmark,
   ArrowUpRight,
-  LogOut
+  LogOut,
+  Pencil
 } from "lucide-react";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
@@ -48,6 +49,7 @@ export default function MobilePage() {
     setSelectedMonth,
     toggleItemRealized, 
     updateItemRealization,
+    updateBankBalance,
     addTransaction,
     deleteTransaction,
     toggleWishlistBought
@@ -72,6 +74,25 @@ export default function MobilePage() {
 
   // Privacy feature: Hide/Show Balance
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+
+  // Bank Balance Modal State
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [inputBcaBalance, setInputBcaBalance] = useState<number>(0);
+  const [inputJagoBalance, setInputJagoBalance] = useState<number>(0);
+
+  const openBankModal = () => {
+    setInputBcaBalance(currentMonthData.real_bca_balance || 0);
+    setInputJagoBalance(currentMonthData.real_jago_balance || 0);
+    setIsBankModalOpen(true);
+  };
+
+  const handleSaveBankBalance = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateBankBalance(inputBcaBalance, inputJagoBalance);
+    setIsBankModalOpen(false);
+    setIsSuccessToast(true);
+    setTimeout(() => setIsSuccessToast(false), 2500);
+  };
 
   React.useEffect(() => {
     try {
@@ -370,14 +391,24 @@ export default function MobilePage() {
                     <h2 className="text-2xl font-bold tracking-tight text-[#242921]">
                       {maskNominal(currentMonthData.real_bca_balance)}
                     </h2>
-                    <button
-                      onClick={toggleHideBalance}
-                      className="p-1 text-[#666E61] hover:text-[#242921] transition rounded-md"
-                      title={isBalanceHidden ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
-                      aria-label="Toggle Saldo"
-                    >
-                      {isBalanceHidden ? <EyeOff className="w-4 h-4 text-[#2196F3]" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={openBankModal}
+                        className="p-1.5 text-[#2196F3] hover:bg-[#E3F2FD] transition rounded-md"
+                        title="Update Saldo Rekening"
+                        aria-label="Update Saldo Rekening"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={toggleHideBalance}
+                        className="p-1 text-[#666E61] hover:text-[#242921] transition rounded-md"
+                        title={isBalanceHidden ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
+                        aria-label="Toggle Saldo"
+                      >
+                        {isBalanceHidden ? <EyeOff className="w-4 h-4 text-[#2196F3]" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1116,6 +1147,75 @@ export default function MobilePage() {
               >
                 <Check className="w-4 h-4 stroke-[3]" />
                 <span>Simpan Transaksi ({formatRupiah(txNominal)})</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: UPDATE REAL BANK BALANCE */}
+      {isBankModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-[#FFFFFF] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-xl border border-[#EEEEEE] space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-[#2196F3]/15 text-[#2196F3]">
+                  <Landmark className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#242921]">Update Saldo Rekening Bank</h3>
+                  <p className="text-[10px] text-[#666E61]">Periode: {selectedMonth}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBankModalOpen(false)}
+                className="p-1 text-[#666E61] hover:text-[#242921] transition rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBankBalance} className="space-y-4">
+              <div>
+                <label className="text-[11px] font-semibold text-[#666E61] block mb-1">
+                  Saldo Riil BCA Utama
+                </label>
+                <CurrencyInput
+                  value={inputBcaBalance}
+                  onChange={(val) => setInputBcaBalance(val)}
+                  placeholder="0"
+                  className="w-full text-base font-bold bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2.5 text-[#242921] focus:border-[#2196F3] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-[#666E61] block mb-1">
+                  Saldo Riil Bank Jago (Opsional)
+                </label>
+                <CurrencyInput
+                  value={inputJagoBalance}
+                  onChange={(val) => setInputJagoBalance(val)}
+                  placeholder="0"
+                  className="w-full text-base font-bold bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2.5 text-[#242921] focus:border-[#2196F3] focus:outline-hidden"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-[#E3F2FD] border border-[#2196F3]/30 text-[11px] text-[#242921] space-y-1">
+                <span className="font-bold text-[#2196F3] block">Total Liquid Cash Riil:</span>
+                <span className="text-base font-extrabold text-[#242921]">
+                  {formatRupiah(inputBcaBalance + inputJagoBalance)}
+                </span>
+                <p className="text-[10px] text-[#666E61]">
+                  Nilai ini akan tersinkronisasi otomatis ke Web Console dan laporan historical bulanan.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-2xl font-bold text-xs shadow-xs transition flex items-center justify-center gap-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white active:scale-[0.99]"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Simpan Saldo Bank</span>
               </button>
             </form>
           </div>

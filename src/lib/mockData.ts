@@ -146,8 +146,8 @@ export const initialPeriod: BudgetPeriod = {
   status: "ACTIVE",
   salary_budget: 10000000,
   additional_budget: 0,
-  real_bca_balance: 3976000,
-  real_jago_balance: 500000,
+  real_bca_balance: 0,
+  real_jago_balance: 0,
 };
 
 export const initialBudgetItems: BudgetPeriodItem[] = [];

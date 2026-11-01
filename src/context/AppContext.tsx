@@ -94,6 +94,7 @@ interface AppContextType {
   removeItemFromCurrentMonth: (itemId: string) => void;
   updateItemBudgetAmount: (itemId: string, newBudget: number) => void;
   updateMonthIncome: (salaryBudget: number, additionalBudget: number) => void;
+  updateBankBalance: (bcaBalance: number, jagoBalance: number) => void;
   saveCurrentMonthBudget: () => boolean;
   copyPreviousMonthBudget: () => boolean; // Auto-clone previous month
   getPreviousMonthUnitNominal: (unitId: string) => number | null; // Helper to show hint
@@ -591,6 +592,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
 
+      if (payload.type === "BANK_BALANCE_UPDATED") {
+        const { periodId, bcaBalance, jagoBalance } = payload;
+        setPeriodsMap((prev) => {
+          const period = prev[periodId];
+          if (!period) return prev;
+          return {
+            ...prev,
+            [periodId]: {
+              ...period,
+              real_bca_balance: bcaBalance,
+              real_jago_balance: jagoBalance,
+            },
+          };
+        });
+      }
+
       if (payload.type === "MASTER_DATA_CHANGED") {
         supabase.from("cashflow_units").select("*").then(({ data }) => {
           if (data) setCashflowUnits(data);
@@ -807,6 +824,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       periodId: selectedMonth,
       salary: salaryBudget,
       additional: additionalBudget,
+    });
+  };
+
+  // 5b. Update Real Bank Balance (BCA & Jago) for selected month
+  const updateBankBalance = (bcaBalance: number, jagoBalance: number) => {
+    setPeriodsMap((prev) => {
+      const current = prev[selectedMonth] || currentMonthData;
+      return {
+        ...prev,
+        [selectedMonth]: {
+          ...current,
+          real_bca_balance: bcaBalance,
+          real_jago_balance: jagoBalance,
+        },
+      };
+    });
+
+    if (isSupabaseConfigured) {
+      const periodData = periodsMap[selectedMonth] || currentMonthData;
+      supabase
+        .from("budget_periods")
+        .upsert({
+          period_month: selectedMonth,
+          status: periodData.status,
+          salary_budget: periodData.salary_budget,
+          additional_budget: periodData.additional_budget,
+          real_bca_balance: bcaBalance,
+          real_jago_balance: jagoBalance,
+        })
+        .then(({ error }) => {
+          if (error) console.error("Supabase update bank balance error:", error.message);
+        });
+    }
+
+    broadcastSync({
+      type: "BANK_BALANCE_UPDATED",
+      periodId: selectedMonth,
+      bcaBalance,
+      jagoBalance,
     });
   };
 
@@ -1510,6 +1566,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeItemFromCurrentMonth,
         updateItemBudgetAmount,
         updateMonthIncome,
+        updateBankBalance,
         saveCurrentMonthBudget,
         copyPreviousMonthBudget,
         getPreviousMonthUnitNominal,
