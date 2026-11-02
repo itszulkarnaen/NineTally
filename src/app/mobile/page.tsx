@@ -30,7 +30,8 @@ import {
   Landmark,
   ArrowUpRight,
   LogOut,
-  Pencil
+  Pencil,
+  ChevronDown
 } from "lucide-react";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
@@ -61,8 +62,17 @@ export default function MobilePage() {
 
   // Search & Infinite Scroll pagination for Cashflow Items
   const [searchQuery, setSearchQuery] = useState("");
-  const [visibleItemLimit, setVisibleItemLimit] = useState(5);
+  const [visibleItemLimit, setVisibleItemLimit] = useState(10);
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Accordion expansion state for Cashflow Unit items (default collapsed = 1 baris)
+  const [expandedItemIds, setExpandedItemIds] = useState<Record<string, boolean>>({});
+  const toggleItemExpand = (id: string) => {
+    setExpandedItemIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   // Form modal state for recording transaction
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
@@ -129,11 +139,34 @@ export default function MobilePage() {
   const isLocked = currentMonthData.status === "LOCKED";
   const budgetItems = currentMonthData.items;
 
-  // Filter and search Cashflow Items
+  // Sort budget items by Priority (HIGHEST > HIGH > NORMAL), then sort_order, then name
+  const sortedBudgetItems = useMemo(() => {
+    const urgencyRank: Record<string, number> = {
+      HIGHEST: 1,
+      HIGH: 2,
+      NORMAL: 3,
+    };
+
+    return [...budgetItems].sort((a, b) => {
+      const rankA = a.urgency ? (urgencyRank[a.urgency] ?? 99) : 99;
+      const rankB = b.urgency ? (urgencyRank[b.urgency] ?? 99) : 99;
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+      if ((a.sort_order ?? 0) !== (b.sort_order ?? 0)) {
+        return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      }
+      const unitA = cashflowUnits.find((u) => u.id === a.cashflow_unit_id)?.name || "";
+      const unitB = cashflowUnits.find((u) => u.id === b.cashflow_unit_id)?.name || "";
+      return unitA.localeCompare(unitB);
+    });
+  }, [budgetItems, cashflowUnits]);
+
+  // Filter and search Cashflow Items (inheriting priority sorting)
   const filteredBudgetItems = useMemo(() => {
-    if (!searchQuery.trim()) return budgetItems;
+    if (!searchQuery.trim()) return sortedBudgetItems;
     const q = searchQuery.toLowerCase().trim();
-    return budgetItems.filter((item) => {
+    return sortedBudgetItems.filter((item) => {
       const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
       return (
         unit?.name.toLowerCase().includes(q) ||
@@ -141,17 +174,22 @@ export default function MobilePage() {
         unit?.category?.toLowerCase().includes(q)
       );
     });
-  }, [budgetItems, cashflowUnits, searchQuery]);
+  }, [sortedBudgetItems, cashflowUnits, searchQuery]);
 
-  // Paginated visible Cashflow Items (starts with 5, loads 5 more on scroll)
+  // Paginated visible Cashflow Items (starts with 10, loads 10 more on scroll)
   const displayedBudgetItems = useMemo(() => {
     return filteredBudgetItems.slice(0, visibleItemLimit);
   }, [filteredBudgetItems, visibleItemLimit]);
 
-  // Reset pagination limit when search query or month changes
+  // Reset pagination limit & accordion when search query or month changes
   React.useEffect(() => {
-    setVisibleItemLimit(5);
-  }, [searchQuery, selectedMonth]);
+    setVisibleItemLimit(10);
+  }, [searchQuery]);
+
+  React.useEffect(() => {
+    setVisibleItemLimit(10);
+    setExpandedItemIds({});
+  }, [selectedMonth]);
 
   // Infinite Scroll IntersectionObserver trigger
   React.useEffect(() => {
@@ -161,7 +199,7 @@ export default function MobilePage() {
         if (entries[0].isIntersecting) {
           setVisibleItemLimit((prev) => {
             if (prev < filteredBudgetItems.length) {
-              return prev + 5;
+              return prev + 10;
             }
             return prev;
           });
@@ -602,7 +640,7 @@ export default function MobilePage() {
                     : "text-[#666E61] hover:text-[#242921]"
                 }`}
               >
-                Cashflow Items ({budgetItems.length})
+                Cashflow Unit ({budgetItems.length})
               </button>
               <button
                 onClick={() => setTransactionView("history")}
@@ -666,86 +704,122 @@ export default function MobilePage() {
                       const budget = item.budget_amount;
                       const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
                       const isOver = spent > budget;
+                      const isExpanded = Boolean(expandedItemIds[item.id]);
 
                       return (
                         <div
                           key={item.id}
-                          className={`rounded-2xl border p-4 bg-[#FFFFFF] shadow-xs space-y-3 transition ${
+                          className={`rounded-2xl border bg-[#FFFFFF] shadow-2xs transition overflow-hidden ${
                             isOver ? "border-rose-200" : "border-[#EEEEEE]"
                           } ${isLocked ? "opacity-75" : ""}`}
                         >
-                          {/* Header: Title, Category, Urgency */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-xs text-[#242921]">
-                                  {unit?.name}
-                                </span>
-                                {getUrgencyPill(item.urgency)}
-                              </div>
-                              <span className="text-[10px] text-[#666E61] block mt-0.5">
-                                {unit?.category || unit?.unit_type}
+                          {/* 1 BARIS DEFAULT SUMMARY (NAMA, PROGRES BAR, ICON EXPAND) */}
+                          <button
+                            type="button"
+                            onClick={() => toggleItemExpand(item.id)}
+                            className="w-full flex items-center justify-between gap-3 p-3.5 text-left select-none active:bg-[#E3F2FD]/30 transition"
+                          >
+                            {/* 1. Nama */}
+                            <div className="min-w-0 flex-1">
+                              <span className="font-bold text-xs text-[#242921] truncate block">
+                                {unit?.name || "Cashflow Unit"}
                               </span>
                             </div>
 
-                            {/* Status Badge */}
-                            <div className="text-right shrink-0">
-                              {isOver ? (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200">
-                                  Overbudget
-                                </span>
-                              ) : spent >= budget && budget > 0 ? (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30">
-                                  100% Tercapai
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E3F2FD] text-[#666E61]">
-                                  {pct}% Terpakai
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Progress Bar */}
-                          <div className="space-y-1">
-                            <div className="w-full bg-[#EEEEEE] h-2 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-300 ${
-                                  isOver ? "bg-rose-500" : "bg-[#2196F3]"
+                            {/* 2. Progres Bar */}
+                            <div className="flex items-center gap-2 shrink-0 w-28 sm:w-36">
+                              <div className="flex-1 bg-[#EEEEEE] h-2 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-300 ${
+                                    isOver ? "bg-rose-500" : "bg-[#2196F3]"
+                                  }`}
+                                  style={{ width: `${Math.min(100, pct)}%` }}
+                                />
+                              </div>
+                              <span
+                                className={`text-[10px] font-bold w-7 text-right shrink-0 ${
+                                  isOver ? "text-rose-600" : "text-[#666E61]"
                                 }`}
-                                style={{ width: `${Math.min(100, pct)}%` }}
+                              >
+                                {pct}%
+                              </span>
+                            </div>
+
+                            {/* 3. Icon Expand */}
+                            <div className="text-[#666E61] shrink-0">
+                              <ChevronDown
+                                className={`w-4 h-4 transition-transform duration-200 ${
+                                  isExpanded ? "rotate-180 text-[#2196F3]" : ""
+                                }`}
                               />
                             </div>
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className="text-[#666E61]">
-                                Realisasi: <strong className={isOver ? "text-rose-600" : "text-[#242921]"}>{formatRupiah(spent)}</strong>
-                              </span>
-                              <span className="text-[#666E61]">
-                                Plafon: <strong>{formatRupiah(budget)}</strong>
-                              </span>
+                          </button>
+
+                          {/* EXPANDED VIEW: PAS DI-EXPAND BARU KAYA SEKARANG */}
+                          {isExpanded && (
+                            <div className="px-3.5 pb-3.5 pt-1 space-y-3 border-t border-[#EEEEEE]/80 animate-in fade-in-50 duration-150">
+                              {/* Category, Urgency & Status Badge */}
+                              <div className="flex items-start justify-between gap-2 pt-1">
+                                <div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[10px] text-[#666E61]">
+                                      {unit?.category || unit?.unit_type}
+                                    </span>
+                                    {getUrgencyPill(item.urgency)}
+                                  </div>
+                                </div>
+
+                                {/* Status Badge */}
+                                <div className="text-right shrink-0">
+                                  {isOver ? (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200">
+                                      Overbudget
+                                    </span>
+                                  ) : spent >= budget && budget > 0 ? (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30">
+                                      100% Tercapai
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E3F2FD] text-[#666E61]">
+                                      {pct}% Terpakai
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Progress Detail: Realisasi vs Plafon */}
+                              <div className="flex items-center justify-between text-[11px] bg-[#E3F2FD]/30 p-2 rounded-xl border border-[#EEEEEE]">
+                                <span className="text-[#666E61]">
+                                  Realisasi: <strong className={isOver ? "text-rose-600" : "text-[#242921]"}>{formatRupiah(spent)}</strong>
+                                </span>
+                                <span className="text-[#666E61]">
+                                  Plafon: <strong>{formatRupiah(budget)}</strong>
+                                </span>
+                              </div>
+
+                              {/* Footer: Count & Quick Catat Button */}
+                              <div className="flex items-center justify-between pt-2 border-t border-[#EEEEEE] text-[11px]">
+                                <span className="text-[#666E61]">
+                                  {itemTx.length > 0 ? (
+                                    <span><strong>{itemTx.length}</strong> transaksi tercatat</span>
+                                  ) : (
+                                    <span className="italic">Belum ada transaksi</span>
+                                  )}
+                                </span>
+
+                                {!isLocked && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openTxModal(item.cashflow_unit_id)}
+                                    className="px-3 py-1 rounded-xl bg-[#2196F3]/15 hover:bg-[#2196F3]/25 text-[#2196F3] font-bold text-[11px] transition flex items-center gap-1 border border-[#2196F3]/30 active:scale-95"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Catat</span>
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-
-                          {/* Footer: Count & Quick Catat Button */}
-                          <div className="flex items-center justify-between pt-2 border-t border-[#EEEEEE] text-[11px]">
-                            <span className="text-[#666E61]">
-                              {itemTx.length > 0 ? (
-                                <span><strong>{itemTx.length}</strong> transaksi tercatat</span>
-                              ) : (
-                                <span className="italic">Belum ada transaksi</span>
-                              )}
-                            </span>
-
-                            {!isLocked && (
-                              <button
-                                onClick={() => openTxModal(item.cashflow_unit_id)}
-                                className="px-3 py-1 rounded-xl bg-[#2196F3]/15 hover:bg-[#2196F3]/25 text-[#2196F3] font-bold text-[11px] transition flex items-center gap-1 border border-[#2196F3]/30"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>Catat</span>
-                              </button>
-                            )}
-                          </div>
+                          )}
                         </div>
                       );
                     })}
@@ -755,17 +829,17 @@ export default function MobilePage() {
                       <div className="space-y-2 pt-1 pb-2">
                         <div ref={sentinelRef} className="py-2 flex items-center justify-center gap-2 text-xs text-[#666E61]">
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2196F3]" />
-                          <span>Scroll untuk memuat 5 item lagi...</span>
+                          <span>Scroll untuk memuat 10 item lagi...</span>
                         </div>
                         <button
-                          onClick={() => setVisibleItemLimit((prev) => prev + 5)}
+                          onClick={() => setVisibleItemLimit((prev) => prev + 10)}
                           className="w-full py-2 bg-[#FFFFFF] hover:bg-[#EEEEEE] border border-[#EEEEEE] rounded-2xl text-xs font-semibold text-[#666E61] transition shadow-2xs"
                         >
-                          Muat 5 Cashflow Item Lagi ({displayedBudgetItems.length}/{filteredBudgetItems.length})
+                          Muat 10 Cashflow Item Lagi ({displayedBudgetItems.length}/{filteredBudgetItems.length})
                         </button>
                       </div>
                     ) : (
-                      filteredBudgetItems.length > 5 && (
+                      filteredBudgetItems.length > 10 && (
                         <div className="text-center text-[10px] text-[#666E61] py-2">
                           Menampilkan seluruh {filteredBudgetItems.length} cashflow items
                         </div>
