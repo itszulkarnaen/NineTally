@@ -138,6 +138,11 @@ export const initialCashflowUnits: CashflowUnit[] = [
 
   // Assets (Auto-sync to portfolio)
   { id: "cf-17", code: "CF-AST01", name: "Topup Reksa Dana", unit_type: "ASSET", linked_asset_id: "ast-3", default_urgency: "NORMAL", is_active: true },
+
+  // Incomes (Dynamic Inflows)
+  { id: "cf-inc-1", code: "GAJI", name: "Gaji Kantor", unit_type: "INCOME", default_urgency: "HIGHEST", is_active: true },
+  { id: "cf-inc-2", code: "SIDE", name: "Freelance & Side Job", unit_type: "INCOME", default_urgency: "HIGH", is_active: true },
+  { id: "cf-inc-3", code: "BONUS", name: "Bonus, THR & Lainnya", unit_type: "INCOME", default_urgency: "NORMAL", is_active: true },
 ];
 
 export const initialPeriod: BudgetPeriod = {

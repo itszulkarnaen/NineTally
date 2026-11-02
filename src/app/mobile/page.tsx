@@ -29,6 +29,7 @@ import {
   EyeOff,
   Landmark,
   ArrowUpRight,
+  ArrowDownLeft,
   LogOut,
   Pencil,
   ChevronDown
@@ -76,6 +77,7 @@ export default function MobilePage() {
 
   // Form modal state for recording transaction
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [txType, setTxType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [txNominal, setTxNominal] = useState<number>(0);
   const [txUnitId, setTxUnitId] = useState<string>("");
   const [txUnitSearch, setTxUnitSearch] = useState<string>("");
@@ -235,24 +237,51 @@ export default function MobilePage() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [transactions, selectedMonth]);
 
-  // Cashflow Metrics based on actual transactions
+  // Cashflow Metrics based on actual transactions (Separates Expenses & Dynamic Inflows)
   const cashflowMetrics = useMemo(() => {
-    const totalIncome = currentMonthData.salary_budget + currentMonthData.additional_budget;
-    const realizedSum = monthTransactions.reduce((acc, t) => acc + t.amount, 0);
-    const sisaAnggaran = totalIncome - realizedSum;
+    const targetIncome = currentMonthData.salary_budget + currentMonthData.additional_budget;
+    
+    let realizedExpenses = 0;
+    let realizedIncome = 0;
+    let outcomeCount = 0;
+    let incomeCount = 0;
+
+    monthTransactions.forEach((t) => {
+      const unit = cashflowUnits.find((u) => u.id === t.cashflow_unit_id);
+      if (unit?.unit_type === "INCOME") {
+        realizedIncome += t.amount;
+        incomeCount++;
+      } else {
+        realizedExpenses += t.amount;
+        outcomeCount++;
+      }
+    });
+
+    const sisaAnggaran = targetIncome - realizedExpenses;
+    const netCashflow = realizedIncome - realizedExpenses;
     const realTotalCash = currentMonthData.real_bca_balance + currentMonthData.real_jago_balance;
 
-    return { totalIncome, realizedSum, sisaAnggaran, realTotalCash };
-  }, [monthTransactions, currentMonthData]);
+    return { 
+      totalIncome: targetIncome, 
+      realizedSum: realizedExpenses, 
+      realizedIncome,
+      netCashflow,
+      outcomeCount,
+      incomeCount,
+      sisaAnggaran, 
+      realTotalCash 
+    };
+  }, [monthTransactions, currentMonthData, cashflowUnits]);
 
-  // Chart Data with Earth & Sage Palette - DYNAMICALLY SOURCED FROM MASTER CATEGORIES
+  // Chart Data with Earth & Sage Palette - DYNAMICALLY SOURCED FROM MASTER CATEGORIES (EXPENSES ONLY)
   const chartData = useMemo(() => {
     const catMap = new Map(categories.map((c) => [c.code, c]));
     const categoryTotals: Record<string, number> = {};
 
-    // Calculate distribution purely from transactions logged this month
+    // Calculate distribution purely from EXPENSE transactions logged this month
     monthTransactions.forEach((tx) => {
       const unit = cashflowUnits.find((u) => u.id === tx.cashflow_unit_id);
+      if (unit?.unit_type === "INCOME") return; // Skip income in outcome chart!
       if (unit?.category) {
         categoryTotals[unit.category] = (categoryTotals[unit.category] || 0) + tx.amount;
       }
@@ -276,7 +305,7 @@ export default function MobilePage() {
     return monthTransactions.filter((t) => t.cashflow_unit_id === selectedPosFilter);
   }, [monthTransactions, selectedPosFilter]);
 
-  // Search filter for modal Cashflow Unit selection
+  // Search filter for modal Cashflow Unit selection (Expenses)
   const filteredModalBudgetItems = useMemo(() => {
     const isSearching = Boolean(txUnitSearch.trim());
     const q = txUnitSearch.toLowerCase().trim();
@@ -306,18 +335,42 @@ export default function MobilePage() {
     return budgetItems.find((i) => i.cashflow_unit_id === txUnitId);
   }, [budgetItems, txUnitId]);
 
+  // Search filter for modal Income Unit selection
+  const filteredModalIncomeUnits = useMemo(() => {
+    const incUnits = cashflowUnits.filter((u) => u.unit_type === "INCOME" && u.is_active);
+    if (!txUnitSearch.trim()) return incUnits;
+    const q = txUnitSearch.toLowerCase().trim();
+    return incUnits.filter(
+      (u) => u.name.toLowerCase().includes(q) || u.code.toLowerCase().includes(q)
+    );
+  }, [cashflowUnits, txUnitSearch]);
+
+  const selectedIncomeUnit = useMemo(() => {
+    return cashflowUnits.find((u) => u.id === txUnitId && u.unit_type === "INCOME");
+  }, [cashflowUnits, txUnitId]);
+
   // Open transaction modal
-  const openTxModal = (preselectedUnitId?: string) => {
+  const openTxModal = (preselectedUnitId?: string, defaultType: "EXPENSE" | "INCOME" = "EXPENSE") => {
     if (isLocked) return;
-    if (preselectedUnitId) {
-      setTxUnitId(preselectedUnitId);
-    } else if (budgetItems.length > 0) {
-      // Find the first uncompleted item (not 100% reached yet)
-      const uncompletedItem = budgetItems.find((item) => {
-        const spent = item.realization_amount ?? item.projection_amount ?? 0;
-        return !( (item.budget_amount > 0 && spent >= item.budget_amount) || item.is_realized );
-      });
-      setTxUnitId(uncompletedItem ? uncompletedItem.cashflow_unit_id : budgetItems[0].cashflow_unit_id);
+    setTxType(defaultType);
+    if (defaultType === "EXPENSE") {
+      if (preselectedUnitId) {
+        setTxUnitId(preselectedUnitId);
+      } else if (budgetItems.length > 0) {
+        // Find the first uncompleted item (not 100% reached yet)
+        const uncompletedItem = budgetItems.find((item) => {
+          const spent = item.realization_amount ?? item.projection_amount ?? 0;
+          return !( (item.budget_amount > 0 && spent >= item.budget_amount) || item.is_realized );
+        });
+        setTxUnitId(uncompletedItem ? uncompletedItem.cashflow_unit_id : budgetItems[0].cashflow_unit_id);
+      }
+    } else {
+      const incUnits = cashflowUnits.filter((u) => u.unit_type === "INCOME" && u.is_active);
+      if (preselectedUnitId) {
+        setTxUnitId(preselectedUnitId);
+      } else if (incUnits.length > 0) {
+        setTxUnitId(incUnits[0].id);
+      }
     }
     setTxNominal(0);
     setTxNotes("");
@@ -496,10 +549,10 @@ export default function MobilePage() {
               <div>
                 <div className="flex items-center justify-between text-xs text-[#666E61]">
                   <span className="font-bold tracking-wider text-[11px] uppercase text-rose-700 flex items-center gap-1.5">
-                    <ArrowUpRight className="w-3.5 h-3.5" /> Nominal Outcome
+                    <ArrowDownLeft className="w-3.5 h-3.5 text-rose-600" /> Nominal Outcome
                   </span>
                   <span className="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full font-bold">
-                    {monthTransactions.length} Transaksi
+                    {cashflowMetrics.outcomeCount} Pengeluaran
                   </span>
                 </div>
                 <div className="my-3">
@@ -519,7 +572,7 @@ export default function MobilePage() {
                 </div>
               </div>
               <div className="text-[11px] text-[#666E61] flex items-center justify-between border-t border-[#EEEEEE] pt-2 font-medium">
-                <span>Total Realisasi Bulan Ini</span>
+                <span>Total Realisasi Pengeluaran</span>
                 <span className="text-[10px] text-[#2196F3] font-bold">
                   {cashflowMetrics.totalIncome > 0
                     ? `${Math.round((cashflowMetrics.realizedSum / cashflowMetrics.totalIncome) * 100)}% Budget`
@@ -563,14 +616,22 @@ export default function MobilePage() {
           </div>
         </div>
 
-        {/* 2. Monthly Cashflow Summary Card */}
+        {/* 2. Monthly Cashflow Summary Card (Option A: Target vs Real Inflow & Outflow) */}
         <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-[#666E61] font-medium">Anggaran Gaji Masuk</span>
-            <span className="font-bold text-sm text-[#242921]">{maskNominal(cashflowMetrics.totalIncome)}</span>
+            <div>
+              <span className="text-[#666E61] font-medium block text-[11px]">Target Pemasukan</span>
+              <span className="font-bold text-sm text-[#242921]">{maskNominal(cashflowMetrics.totalIncome)}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[#666E61] font-medium block text-[11px]">Pemasukan Riil</span>
+              <span className={`font-bold text-sm ${cashflowMetrics.realizedIncome > 0 ? "text-emerald-600" : "text-[#666E61]"}`}>
+                {cashflowMetrics.realizedIncome > 0 ? `+${maskNominal(cashflowMetrics.realizedIncome)}` : "Rp 0"}
+              </span>
+            </div>
           </div>
 
-          {/* Visual Progress Bar */}
+          {/* Visual Progress Bar (Expense vs Target Budget) */}
           <div className="space-y-1.5">
             <div className="w-full bg-[#EEEEEE] h-2.5 rounded-full overflow-hidden flex">
               <div 
@@ -579,10 +640,24 @@ export default function MobilePage() {
               />
             </div>
             <div className="flex justify-between text-[11px] font-medium">
-              <span className="text-[#2196F3]">Terlaksana: {maskNominal(cashflowMetrics.realizedSum)}</span>
-              <span className="text-[#666E61]">Sisa: {maskNominal(cashflowMetrics.sisaAnggaran)}</span>
+              <span className="text-rose-600">Terpakai: {maskNominal(cashflowMetrics.realizedSum)}</span>
+              <span className="text-[#666E61]">Sisa Pagu: {maskNominal(cashflowMetrics.sisaAnggaran)}</span>
             </div>
           </div>
+
+          {/* Net Cashflow Riil (Inflow - Outflow) */}
+          {cashflowMetrics.realizedIncome > 0 && (
+            <div className="pt-2 border-t border-[#EEEEEE] flex items-center justify-between text-[11px]">
+              <span className="text-[#666E61]">Net Cashflow Riil (In - Out):</span>
+              <span className={`font-bold px-2 py-0.5 rounded-md ${
+                cashflowMetrics.netCashflow >= 0
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-rose-50 text-rose-700 border border-rose-200"
+              }`}>
+                {cashflowMetrics.netCashflow >= 0 ? "+" : ""}{maskNominal(cashflowMetrics.netCashflow)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 3. Sub Tabs Navigation */}
@@ -861,16 +936,30 @@ export default function MobilePage() {
                     onChange={(e) => setSelectedPosFilter(e.target.value)}
                     className="flex-1 bg-[#E3F2FD]/40 border border-[#EEEEEE] rounded-xl px-2.5 py-1 text-xs text-[#242921] font-medium"
                   >
-                    <option value="ALL">Semua Cashflow Item ({monthTransactions.length})</option>
-                    {budgetItems.map((item) => {
-                      const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
-                      const count = monthTransactions.filter((t) => t.cashflow_unit_id === item.cashflow_unit_id).length;
-                      return (
-                        <option key={item.id} value={item.cashflow_unit_id}>
-                          {unit?.name} ({count})
-                        </option>
-                      );
-                    })}
+                    <option value="ALL">Semua Transaksi ({monthTransactions.length})</option>
+                    <optgroup label="Pengeluaran (Expense)">
+                      {budgetItems.map((item) => {
+                        const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+                        const count = monthTransactions.filter((t) => t.cashflow_unit_id === item.cashflow_unit_id).length;
+                        return (
+                          <option key={item.id} value={item.cashflow_unit_id}>
+                            {unit?.name} ({count})
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                    <optgroup label="Pemasukan (Income)">
+                      {cashflowUnits
+                        .filter((u) => u.unit_type === "INCOME")
+                        .map((u) => {
+                          const count = monthTransactions.filter((t) => t.cashflow_unit_id === u.id).length;
+                          return (
+                            <option key={u.id} value={u.id}>
+                              {u.name} ({count})
+                            </option>
+                          );
+                        })}
+                    </optgroup>
                   </select>
                 </div>
 
@@ -879,13 +968,14 @@ export default function MobilePage() {
                     <p className="text-xs font-bold text-[#242921]">Belum Ada Transaksi</p>
                     <p className="text-[11px] text-[#666E61]">
                       {selectedPosFilter === "ALL" 
-                        ? "Klik tombol di atas untuk mencatat pengeluaran perdana."
-                        : "Belum ada transaksi pada cashflow item yang dipilih."}
+                        ? "Klik tombol di atas untuk mencatat transaksi perdana."
+                        : "Belum ada transaksi pada pos yang dipilih."}
                     </p>
                   </div>
                 ) : (
                   filteredTransactions.map((tx) => {
                     const unit = cashflowUnits.find((u) => u.id === tx.cashflow_unit_id);
+                    const isIncome = unit?.unit_type === "INCOME";
 
                     return (
                       <div
@@ -893,14 +983,22 @@ export default function MobilePage() {
                         className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs"
                       >
                         <div className="flex items-start gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-xl bg-[#2196F3]/15 text-[#2196F3] flex items-center justify-center shrink-0 mt-0.5">
-                            <Receipt className="w-4 h-4" />
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                            isIncome 
+                              ? "bg-emerald-100 text-emerald-700 border border-emerald-200" 
+                              : "bg-[#2196F3]/15 text-[#2196F3]"
+                          }`}>
+                            {isIncome ? <ArrowDownLeft className="w-4 h-4 text-emerald-600" /> : <Receipt className="w-4 h-4" />}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-xs text-[#242921] truncate">{unit?.name}</span>
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#E3F2FD] text-[#666E61]">
-                                {unit?.category || unit?.unit_type}
+                              <span className="font-bold text-xs text-[#242921] truncate">{unit?.name || "Transaksi"}</span>
+                              <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                                isIncome 
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
+                                  : "bg-[#E3F2FD] text-[#666E61]"
+                              }`}>
+                                {isIncome ? "INCOME" : unit?.category || unit?.unit_type}
                               </span>
                             </div>
                             {tx.notes && (
@@ -911,8 +1009,8 @@ export default function MobilePage() {
                         </div>
 
                         <div className="flex items-center gap-3 shrink-0">
-                          <span className="font-bold text-xs text-[#242921]">
-                            -{formatRupiah(tx.amount)}
+                          <span className={`font-bold text-xs ${isIncome ? "text-emerald-600" : "text-[#242921]"}`}>
+                            {isIncome ? `+${formatRupiah(tx.amount)}` : `-${formatRupiah(tx.amount)}`}
                           </span>
 
                           {!isLocked && (
@@ -1099,7 +1197,7 @@ export default function MobilePage() {
       </div>
 
       {/* Floating Action Button (FAB) for quick logging */}
-      {!isLocked && activeTab === "transactions" && budgetItems.length > 0 && (
+      {!isLocked && activeTab === "transactions" && (
         <button
           onClick={() => openTxModal()}
           className="fixed bottom-6 right-6 w-14 h-14 bg-[#2196F3] hover:bg-[#1E88E5] text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-90 z-30"
@@ -1117,15 +1215,19 @@ export default function MobilePage() {
         </div>
       )}
 
-      {/* Slide-Up Bottom Sheet Modal: Form Catat Pengeluaran */}
+      {/* Slide-Up Bottom Sheet Modal: Form Catat Transaksi (Expense / Income) */}
       {isTxModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
           <div className="bg-[#FFFFFF] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
               <div>
-                <h3 className="text-sm font-bold text-[#242921]">Catat Pengeluaran Baru</h3>
-                <p className="text-[11px] text-[#666E61]">Input mutasi transaksi ke dalam cashflow item</p>
+                <h3 className="text-sm font-bold text-[#242921]">
+                  {txType === "EXPENSE" ? "Catat Pengeluaran Baru" : "Catat Pemasukan Baru"}
+                </h3>
+                <p className="text-[11px] text-[#666E61]">
+                  {txType === "EXPENSE" ? "Input mutasi transaksi ke dalam pos anggaran" : "Input pemasukan uang ke dalam rekening"}
+                </p>
               </div>
               <button
                 type="button"
@@ -1136,102 +1238,220 @@ export default function MobilePage() {
               </button>
             </div>
 
+            {/* Type Switcher: Pengeluaran vs Pemasukan */}
+            <div className="flex items-center p-1 bg-[#E3F2FD]/50 rounded-xl border border-[#EEEEEE]">
+              <button
+                type="button"
+                onClick={() => {
+                  setTxType("EXPENSE");
+                  if (budgetItems.length > 0) {
+                    const uncompletedItem = budgetItems.find((item) => {
+                      const spent = item.realization_amount ?? item.projection_amount ?? 0;
+                      return !( (item.budget_amount > 0 && spent >= item.budget_amount) || item.is_realized );
+                    });
+                    setTxUnitId(uncompletedItem ? uncompletedItem.cashflow_unit_id : budgetItems[0].cashflow_unit_id);
+                  }
+                  setTxNominal(0);
+                }}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  txType === "EXPENSE"
+                    ? "bg-white text-rose-600 shadow-xs border border-rose-100"
+                    : "text-[#666E61] hover:text-[#242921]"
+                }`}
+              >
+                <Receipt className="w-3.5 h-3.5 text-rose-500" />
+                <span>Pengeluaran</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTxType("INCOME");
+                  const incUnits = cashflowUnits.filter((u) => u.unit_type === "INCOME" && u.is_active);
+                  if (incUnits.length > 0) {
+                    setTxUnitId(incUnits[0].id);
+                  }
+                  setTxNominal(0);
+                }}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  txType === "INCOME"
+                    ? "bg-white text-emerald-600 shadow-xs border border-emerald-100"
+                    : "text-[#666E61] hover:text-[#242921]"
+                }`}
+              >
+                <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Pemasukan</span>
+              </button>
+            </div>
+
             {/* Form */}
             <form onSubmit={handleSaveTransaction} className="space-y-4">
-              {/* Field 1: Pilih Cashflow Item (Searchable + Nama & Nominal saja) */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[11px] font-semibold text-[#666E61]">
-                    Pilih Cashflow Item <span className="text-rose-500">*</span>
-                  </label>
-                  {selectedBudgetItem && (
-                    <span className="text-[10px] font-bold text-[#2196F3] bg-[#2196F3]/10 px-2 py-0.5 rounded-md">
-                      Budget: {formatRupiah(selectedBudgetItem.budget_amount)}
-                    </span>
-                  )}
-                </div>
+              {/* Field 1: Pilih Pos Pengeluaran / Sumber Pemasukan */}
+              {txType === "EXPENSE" ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-semibold text-[#666E61]">
+                      Pilih Cashflow Item <span className="text-rose-500">*</span>
+                    </label>
+                    {selectedBudgetItem && (
+                      <span className="text-[10px] font-bold text-[#2196F3] bg-[#2196F3]/10 px-2 py-0.5 rounded-md">
+                        Budget: {formatRupiah(selectedBudgetItem.budget_amount)}
+                      </span>
+                    )}
+                  </div>
 
-                {/* Search Bar for CF Units */}
-                <div className="relative mb-2">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#666E61]" />
-                  <input
-                    type="text"
-                    placeholder="Cari item cashflow..."
-                    value={txUnitSearch}
-                    onChange={(e) => setTxUnitSearch(e.target.value)}
-                    className="w-full pl-8 pr-8 py-2 text-xs bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl text-[#242921] placeholder:text-[#666E61]/60 focus:border-[#2196F3] focus:outline-hidden"
-                  />
-                  {txUnitSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setTxUnitSearch("")}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#666E61] hover:text-[#242921] p-1"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
+                  {/* Search Bar for CF Units */}
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#666E61]" />
+                    <input
+                      type="text"
+                      placeholder="Cari pos pengeluaran..."
+                      value={txUnitSearch}
+                      onChange={(e) => setTxUnitSearch(e.target.value)}
+                      className="w-full pl-8 pr-8 py-2 text-xs bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl text-[#242921] placeholder:text-[#666E61]/60 focus:border-[#2196F3] focus:outline-hidden"
+                    />
+                    {txUnitSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setTxUnitSearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#666E61] hover:text-[#242921] p-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
 
-                {/* Clean Scrollable List: Nama & Nominal Only */}
-                <div className="max-h-40 overflow-y-auto border border-[#EEEEEE] rounded-xl divide-y divide-[#EEEEEE] bg-[#FFFFFF] shadow-2xs">
-                  {filteredModalBudgetItems.length === 0 ? (
-                    <div className="p-3 text-center text-xs text-[#666E61]">
-                      {budgetItems.length === 0 
-                        ? "Belum ada item anggaran di bulan ini"
-                        : txUnitSearch.trim()
-                        ? "Tidak ada cashflow item yang cocok"
-                        : "Semua pos anggaran sudah 100% tercapai. Cari nama item di atas jika ingin catat pengeluaran tambahan."}
-                    </div>
-                  ) : (
-                    filteredModalBudgetItems.map((item) => {
-                      const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
-                      const isSelected = txUnitId === item.cashflow_unit_id;
-                      const spent = item.realization_amount ?? item.projection_amount ?? 0;
-                      const isCompleted = (item.budget_amount > 0 && spent >= item.budget_amount) || item.is_realized;
+                  {/* Clean Scrollable List: Nama & Nominal Only */}
+                  <div className="max-h-40 overflow-y-auto border border-[#EEEEEE] rounded-xl divide-y divide-[#EEEEEE] bg-[#FFFFFF] shadow-2xs">
+                    {filteredModalBudgetItems.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-[#666E61]">
+                        {budgetItems.length === 0 
+                          ? "Belum ada item anggaran di bulan ini"
+                          : txUnitSearch.trim()
+                          ? "Tidak ada pos yang cocok"
+                          : "Semua pos anggaran sudah 100% tercapai. Cari nama item di atas jika ingin catat pengeluaran tambahan."}
+                      </div>
+                    ) : (
+                      filteredModalBudgetItems.map((item) => {
+                        const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+                        const isSelected = txUnitId === item.cashflow_unit_id;
+                        const spent = item.realization_amount ?? item.projection_amount ?? 0;
+                        const isCompleted = (item.budget_amount > 0 && spent >= item.budget_amount) || item.is_realized;
 
-                      return (
-                        <button
-                          type="button"
-                          key={item.id}
-                          onClick={() => setTxUnitId(item.cashflow_unit_id)}
-                          className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition ${
-                            isSelected
-                              ? "bg-[#2196F3] text-white font-bold"
-                              : "hover:bg-[#E3F2FD]/40 text-[#242921]"
-                          }`}
-                        >
-                          <span className="text-xs truncate font-medium flex items-center gap-1.5">
-                            <span>{unit?.name || "Cashflow Item"}</span>
-                            {isCompleted && (
-                              <span
-                                className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                                  isSelected
-                                    ? "bg-white/20 text-white"
-                                    : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                }`}
-                              >
-                                100%
-                              </span>
-                            )}
-                          </span>
-                          <span
-                            className={`text-xs shrink-0 ml-3 font-semibold ${
-                              isSelected ? "text-white" : "text-[#2196F3]"
+                        return (
+                          <button
+                            type="button"
+                            key={item.id}
+                            onClick={() => setTxUnitId(item.cashflow_unit_id)}
+                            className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition ${
+                              isSelected
+                                ? "bg-[#2196F3] text-white font-bold"
+                                : "hover:bg-[#E3F2FD]/40 text-[#242921]"
                             }`}
                           >
-                            {formatRupiah(item.budget_amount)}
-                          </span>
-                        </button>
-                      );
-                    })
-                  )}
+                            <span className="text-xs truncate font-medium flex items-center gap-1.5">
+                              <span>{unit?.name || "Cashflow Item"}</span>
+                              {isCompleted && (
+                                <span
+                                  className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                                    isSelected
+                                      ? "bg-white/20 text-white"
+                                      : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  }`}
+                                >
+                                  100%
+                                </span>
+                              )}
+                            </span>
+                            <span
+                              className={`text-xs shrink-0 ml-3 font-semibold ${
+                                isSelected ? "text-white" : "text-[#2196F3]"
+                              }`}
+                            >
+                              {formatRupiah(item.budget_amount)}
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* INCOME: Sumber Pemasukan */
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-semibold text-[#666E61]">
+                      Pilih Sumber Pemasukan <span className="text-rose-500">*</span>
+                    </label>
+                    {selectedIncomeUnit && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                        {selectedIncomeUnit.name}
+                      </span>
+                    )}
+                  </div>
 
-              {/* Field 2: Nominal Transaksi & Complete Button */}
+                  {/* Search Bar for Income Units */}
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#666E61]" />
+                    <input
+                      type="text"
+                      placeholder="Cari sumber pemasukan..."
+                      value={txUnitSearch}
+                      onChange={(e) => setTxUnitSearch(e.target.value)}
+                      className="w-full pl-8 pr-8 py-2 text-xs bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl text-[#242921] placeholder:text-[#666E61]/60 focus:border-[#2196F3] focus:outline-hidden"
+                    />
+                    {txUnitSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setTxUnitSearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#666E61] hover:text-[#242921] p-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* List Income Units */}
+                  <div className="max-h-40 overflow-y-auto border border-[#EEEEEE] rounded-xl divide-y divide-[#EEEEEE] bg-[#FFFFFF] shadow-2xs">
+                    {filteredModalIncomeUnits.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-[#666E61]">
+                        Belum ada sumber pemasukan yang cocok.
+                      </div>
+                    ) : (
+                      filteredModalIncomeUnits.map((u) => {
+                        const isSelected = txUnitId === u.id;
+                        return (
+                          <button
+                            type="button"
+                            key={u.id}
+                            onClick={() => setTxUnitId(u.id)}
+                            className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition ${
+                              isSelected
+                                ? "bg-emerald-600 text-white font-bold"
+                                : "hover:bg-emerald-50/50 text-[#242921]"
+                            }`}
+                          >
+                            <span className="text-xs truncate font-medium">
+                              {u.name}
+                            </span>
+                            <span
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
+                                isSelected ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-700"
+                              }`}
+                            >
+                              Income
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Field 2: Nominal Transaksi & Actions */}
               <div>
                 <label className="text-[11px] font-semibold text-[#666E61] block mb-1">
-                  Nominal Transaksi (Rp) <span className="text-rose-500">*</span>
+                  Nominal {txType === "EXPENSE" ? "Pengeluaran" : "Pemasukan"} (Rp) <span className="text-rose-500">*</span>
                 </label>
                 <CurrencyInput
                   value={txNominal}
@@ -1240,22 +1460,28 @@ export default function MobilePage() {
                   placeholder="0"
                 />
 
-                {/* Complete Button & Reset only */}
+                {/* Quick Actions: Complete Button (only for Expense) & Reset */}
                 <div className="flex items-center justify-between mt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedBudgetItem) {
-                        setTxNominal(selectedBudgetItem.budget_amount);
-                      }
-                    }}
-                    disabled={!selectedBudgetItem || selectedBudgetItem.budget_amount <= 0}
-                    className="px-3 py-1.5 text-xs font-bold bg-[#2196F3] text-white hover:bg-[#1E88E5] active:scale-95 transition rounded-xl shadow-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Isi otomatis sama dengan nominal budget item"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Complete {selectedBudgetItem ? `(${formatRupiah(selectedBudgetItem.budget_amount)})` : ""}</span>
-                  </button>
+                  {txType === "EXPENSE" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedBudgetItem) {
+                          setTxNominal(selectedBudgetItem.budget_amount);
+                        }
+                      }}
+                      disabled={!selectedBudgetItem || selectedBudgetItem.budget_amount <= 0}
+                      className="px-3 py-1.5 text-xs font-bold bg-[#2196F3] text-white hover:bg-[#1E88E5] active:scale-95 transition rounded-xl shadow-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Isi otomatis sama dengan nominal budget item"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Complete {selectedBudgetItem ? `(${formatRupiah(selectedBudgetItem.budget_amount)})` : ""}</span>
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                      <ArrowDownLeft className="w-3.5 h-3.5" /> Otomatis menambah saldo bank BCA
+                    </span>
+                  )}
 
                   {txNominal > 0 && (
                     <button
@@ -1276,7 +1502,7 @@ export default function MobilePage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="misal: Makan siang sate, beli bensin, token..."
+                  placeholder={txType === "EXPENSE" ? "misal: Makan siang sate, beli bensin..." : "misal: Gaji bulan ini, freelance website..."}
                   value={txNotes}
                   onChange={(e) => setTxNotes(e.target.value)}
                   className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921] focus:border-[#2196F3] focus:outline-hidden"
@@ -1304,11 +1530,15 @@ export default function MobilePage() {
                 className={`w-full py-3 rounded-2xl font-bold text-xs shadow-xs transition flex items-center justify-center gap-2 ${
                   txNominal <= 0 || !txUnitId
                     ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    : txType === "INCOME"
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.99]"
                     : "bg-[#2196F3] hover:bg-[#1E88E5] text-white active:scale-[0.99]"
                 }`}
               >
                 <Check className="w-4 h-4 stroke-[3]" />
-                <span>Simpan Transaksi ({formatRupiah(txNominal)})</span>
+                <span>
+                  {txType === "INCOME" ? "Simpan Pemasukan" : "Simpan Pengeluaran"} {txNominal > 0 ? `(${formatRupiah(txNominal)})` : ""}
+                </span>
               </button>
             </form>
           </div>
