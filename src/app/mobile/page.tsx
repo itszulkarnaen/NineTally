@@ -240,9 +240,22 @@ export default function MobilePage() {
 
   // Search filter for modal Cashflow Unit selection
   const filteredModalBudgetItems = useMemo(() => {
-    if (!txUnitSearch.trim()) return budgetItems;
+    const isSearching = Boolean(txUnitSearch.trim());
     const q = txUnitSearch.toLowerCase().trim();
+
     return budgetItems.filter((item) => {
+      const spent = item.realization_amount ?? item.projection_amount ?? 0;
+      const isHundredPercent = (item.budget_amount > 0 && spent >= item.budget_amount) || item.is_realized;
+
+      // 1. If NOT searching: hide items that have reached 100% budget!
+      if (!isSearching && isHundredPercent) {
+        return false;
+      }
+
+      // 2. If NOT searching and not 100%: include it
+      if (!isSearching) return true;
+
+      // 3. If searching: search across ALL items (including 100% ones)
       const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
       return (
         unit?.name.toLowerCase().includes(q) ||
@@ -260,8 +273,13 @@ export default function MobilePage() {
     if (isLocked) return;
     if (preselectedUnitId) {
       setTxUnitId(preselectedUnitId);
-    } else if (budgetItems.length > 0 && (!txUnitId || !budgetItems.some((i) => i.cashflow_unit_id === txUnitId))) {
-      setTxUnitId(budgetItems[0].cashflow_unit_id);
+    } else if (budgetItems.length > 0) {
+      // Find the first uncompleted item (not 100% reached yet)
+      const uncompletedItem = budgetItems.find((item) => {
+        const spent = item.realization_amount ?? item.projection_amount ?? 0;
+        return !( (item.budget_amount > 0 && spent >= item.budget_amount) || item.is_realized );
+      });
+      setTxUnitId(uncompletedItem ? uncompletedItem.cashflow_unit_id : budgetItems[0].cashflow_unit_id);
     }
     setTxNominal(0);
     setTxNotes("");
@@ -292,10 +310,6 @@ export default function MobilePage() {
     setIsTxModalOpen(false);
     setIsSuccessToast(true);
     setTimeout(() => setIsSuccessToast(false), 2500);
-  };
-
-  const addQuickNominal = (amt: number) => {
-    setTxNominal((prev) => prev + amt);
   };
 
   const getUrgencyPill = (urgency: UrgencyLevel) => {
@@ -1090,12 +1104,16 @@ export default function MobilePage() {
                     <div className="p-3 text-center text-xs text-[#666E61]">
                       {budgetItems.length === 0 
                         ? "Belum ada item anggaran di bulan ini"
-                        : "Tidak ada cashflow item yang cocok"}
+                        : txUnitSearch.trim()
+                        ? "Tidak ada cashflow item yang cocok"
+                        : "Semua pos anggaran sudah 100% tercapai. Cari nama item di atas jika ingin catat pengeluaran tambahan."}
                     </div>
                   ) : (
                     filteredModalBudgetItems.map((item) => {
                       const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
                       const isSelected = txUnitId === item.cashflow_unit_id;
+                      const spent = item.realization_amount ?? item.projection_amount ?? 0;
+                      const isCompleted = (item.budget_amount > 0 && spent >= item.budget_amount) || item.is_realized;
 
                       return (
                         <button
@@ -1108,8 +1126,19 @@ export default function MobilePage() {
                               : "hover:bg-[#E3F2FD]/40 text-[#242921]"
                           }`}
                         >
-                          <span className="text-xs truncate font-medium">
-                            {unit?.name || "Cashflow Item"}
+                          <span className="text-xs truncate font-medium flex items-center gap-1.5">
+                            <span>{unit?.name || "Cashflow Item"}</span>
+                            {isCompleted && (
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                                  isSelected
+                                    ? "bg-white/20 text-white"
+                                    : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                }`}
+                              >
+                                100%
+                              </span>
+                            )}
                           </span>
                           <span
                             className={`text-xs shrink-0 ml-3 font-semibold ${
@@ -1125,7 +1154,7 @@ export default function MobilePage() {
                 </div>
               </div>
 
-              {/* Field 2: Nominal Transaksi & Quick Fill with Complete */}
+              {/* Field 2: Nominal Transaksi & Complete Button */}
               <div>
                 <label className="text-[11px] font-semibold text-[#666E61] block mb-1">
                   Nominal Transaksi (Rp) <span className="text-rose-500">*</span>
@@ -1137,9 +1166,8 @@ export default function MobilePage() {
                   placeholder="0"
                 />
 
-                {/* Quick Nominal Chips with Complete Button */}
-                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                  {/* Complete Button (Auto-fills equal to CF unit's budget) */}
+                {/* Complete Button & Reset only */}
+                <div className="flex items-center justify-between mt-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -1148,46 +1176,18 @@ export default function MobilePage() {
                       }
                     }}
                     disabled={!selectedBudgetItem || selectedBudgetItem.budget_amount <= 0}
-                    className="px-2.5 py-1 text-[11px] font-bold bg-[#2196F3] text-white hover:bg-[#1E88E5] active:scale-95 transition rounded-lg shadow-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 text-xs font-bold bg-[#2196F3] text-white hover:bg-[#1E88E5] active:scale-95 transition rounded-xl shadow-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Isi otomatis sama dengan nominal budget item"
                   >
-                    <Sparkles className="w-3 h-3" />
+                    <Sparkles className="w-3.5 h-3.5" />
                     <span>Complete {selectedBudgetItem ? `(${formatRupiah(selectedBudgetItem.budget_amount)})` : ""}</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => addQuickNominal(10000)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] rounded-lg border border-[#EEEEEE] text-[#242921]"
-                  >
-                    +10rb
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addQuickNominal(20000)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] rounded-lg border border-[#EEEEEE] text-[#242921]"
-                  >
-                    +20rb
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addQuickNominal(50000)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] rounded-lg border border-[#EEEEEE] text-[#242921]"
-                  >
-                    +50rb
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addQuickNominal(100000)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] rounded-lg border border-[#EEEEEE] text-[#242921]"
-                  >
-                    +100rb
-                  </button>
                   {txNominal > 0 && (
                     <button
                       type="button"
                       onClick={() => setTxNominal(0)}
-                      className="px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50 rounded-lg ml-auto"
+                      className="px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition"
                     >
                       Reset
                     </button>
