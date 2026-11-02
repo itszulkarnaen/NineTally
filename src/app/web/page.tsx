@@ -35,7 +35,8 @@ import {
   ChevronDown,
   ChevronUp,
   Settings2,
-  SlidersHorizontal
+  SlidersHorizontal,
+  RefreshCw
 } from "lucide-react";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
@@ -85,6 +86,8 @@ export default function WebPage() {
     payrollSettings,
     updatePayrollSettings,
     triggerPaydayExecution,
+    cloudSyncStatus,
+    retryCloudSync,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<NavTab>("budget");
@@ -240,23 +243,40 @@ export default function WebPage() {
     }
   };
 
-  const handleCreateUnit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!unitName) return;
+  // Master Data Submission Loading & Toast States
+  const [isSubmittingUnit, setIsSubmittingUnit] = useState(false);
+  const [isSubmittingEditUnit, setIsSubmittingEditUnit] = useState(false);
+  const [masterSuccessToast, setMasterSuccessToast] = useState<string | null>(null);
 
-    createCashflowUnit({
-      code: unitCode || `CF-${Date.now().toString().slice(-4)}`,
-      name: unitName,
+  const handleCreateUnit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unitName.trim()) return;
+
+    setIsSubmittingUnit(true);
+    const res = await createCashflowUnit({
+      code: unitCode.trim() || `CF-${Date.now().toString().slice(-6)}`,
+      name: unitName.trim(),
       unit_type: unitType,
       category: unitType === "EXPENSE" ? unitCategory : undefined,
       default_urgency: unitUrgency,
     });
+    setIsSubmittingUnit(false);
+
+    if (!res.success) {
+      setValidationAlert({
+        title: "Gagal Menyimpan Cashflow Item",
+        message: res.message || "Terjadi kesalahan saat menyimpan data ke database Supabase.",
+      });
+      return;
+    }
 
     setUnitName("");
     setUnitCode("");
+    setMasterSuccessToast("Cashflow item berhasil disimpan ke database!");
+    setTimeout(() => setMasterSuccessToast(null), 3000);
   };
 
-  const handleCreateCategory = (e: React.FormEvent) => {
+  const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!catName.trim()) return;
 
@@ -264,7 +284,7 @@ export default function WebPage() {
       ? catCode.trim().toUpperCase().replace(/\s+/g, "_")
       : catName.trim().toUpperCase().replace(/[^A-Z0-9]/g, "_");
 
-    createCategory({
+    const res = await createCategory({
       code,
       name: catName.trim(),
       color: catColor || "#2196F3",
@@ -272,9 +292,19 @@ export default function WebPage() {
       sort_order: categories.length + 1,
     });
 
+    if (!res.success) {
+      setValidationAlert({
+        title: "Gagal Menyimpan Kategori",
+        message: res.message || "Terjadi kesalahan saat menyimpan kategori ke database.",
+      });
+      return;
+    }
+
     setCatName("");
     setCatCode("");
     setCatDesc("");
+    setMasterSuccessToast("Kategori berhasil disimpan ke database!");
+    setTimeout(() => setMasterSuccessToast(null), 3000);
   };
 
   // Master Data Editing & Dialog States
@@ -297,67 +327,107 @@ export default function WebPage() {
   const [newAssetIsExternal, setNewAssetIsExternal] = useState(false);
 
   // Cashflow Unit Actions
-  const handleDeleteUnit = (id: string) => {
-    const res = deleteCashflowUnit(id);
+  const handleDeleteUnit = async (id: string) => {
+    const res = await deleteCashflowUnit(id);
     if (!res.success) {
       setValidationAlert({
         title: "Penghapusan Cashflow Item Ditolak",
         message: res.message || "Item tidak dapat dihapus karena sudah dipakai dalam anggaran atau transaksi.",
         suggestArchiveUnitId: id,
       });
+    } else {
+      setMasterSuccessToast("Cashflow item berhasil dihapus.");
+      setTimeout(() => setMasterSuccessToast(null), 3000);
     }
   };
 
-  const handleToggleUnitArchive = (unit: CashflowUnit) => {
-    updateCashflowUnit(unit.id, { is_active: !unit.is_active });
+  const handleToggleUnitArchive = async (unit: CashflowUnit) => {
+    const res = await updateCashflowUnit(unit.id, { is_active: !unit.is_active });
+    if (!res.success) {
+      setValidationAlert({
+        title: "Gagal Mengubah Status Item",
+        message: res.message || "Terjadi kesalahan saat memperbarui status ke database.",
+      });
+      return;
+    }
     if (validationAlert?.suggestArchiveUnitId === unit.id) {
       setValidationAlert(null);
     }
   };
 
-  const handleUpdateUnitSubmit = (e: React.FormEvent) => {
+  const handleUpdateUnitSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUnit) return;
-    updateCashflowUnit(editingUnit.id, {
-      name: editingUnit.name,
-      code: editingUnit.code,
+
+    setIsSubmittingEditUnit(true);
+    const res = await updateCashflowUnit(editingUnit.id, {
+      name: editingUnit.name.trim(),
+      code: editingUnit.code.trim(),
       unit_type: editingUnit.unit_type,
       category: editingUnit.unit_type === "EXPENSE" ? editingUnit.category : undefined,
       default_urgency: editingUnit.default_urgency,
       linked_asset_id: editingUnit.unit_type === "ASSET" ? editingUnit.linked_asset_id : undefined,
       is_active: editingUnit.is_active,
     });
+    setIsSubmittingEditUnit(false);
+
+    if (!res.success) {
+      setValidationAlert({
+        title: "Gagal Update Cashflow Item",
+        message: res.message || "Terjadi kesalahan saat memperbarui data di database.",
+      });
+      return;
+    }
+
     setEditingUnit(null);
+    setMasterSuccessToast("Perubahan Cashflow item berhasil disimpan!");
+    setTimeout(() => setMasterSuccessToast(null), 3000);
   };
 
   // Master Category Actions
-  const handleDeleteCategory = (id: string) => {
-    const res = deleteCategory(id);
+  const handleDeleteCategory = async (id: string) => {
+    const res = await deleteCategory(id);
     if (!res.success) {
       setValidationAlert({
         title: "Penghapusan Kategori Ditolak",
         message: res.message || "Kategori tidak dapat dihapus karena masih dipakai oleh item cashflow.",
       });
+    } else {
+      setMasterSuccessToast("Kategori berhasil dihapus.");
+      setTimeout(() => setMasterSuccessToast(null), 3000);
     }
   };
 
-  const handleUpdateCategorySubmit = (e: React.FormEvent) => {
+  const handleUpdateCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCategory) return;
-    updateCategory(editingCategory.id, {
+    setIsSubmittingEditUnit(true);
+    const res = await updateCategory(editingCategory.id, {
       name: editingCategory.name.trim(),
       code: editingCategory.code.trim().toUpperCase(),
       color: editingCategory.color,
       description: editingCategory.description?.trim() || undefined,
     });
+    setIsSubmittingEditUnit(false);
+
+    if (!res.success) {
+      setValidationAlert({
+        title: "Gagal Update Kategori",
+        message: res.message || "Terjadi kesalahan saat memperbarui kategori di database.",
+      });
+      return;
+    }
+
     setEditingCategory(null);
+    setMasterSuccessToast("Perubahan kategori berhasil disimpan!");
+    setTimeout(() => setMasterSuccessToast(null), 3000);
   };
 
   // Asset Actions
-  const handleCreateAssetSubmit = (e: React.FormEvent) => {
+  const handleCreateAssetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAssetName.trim()) return;
-    createAsset({
+    const res = await createAsset({
       name: newAssetName.trim(),
       liquidity_tier: newAssetTier,
       main_value: newAssetMainValue,
@@ -366,6 +436,15 @@ export default function WebPage() {
       goal_bucket: newAssetBucket.trim() || undefined,
       is_external: newAssetIsExternal,
     });
+
+    if (!res.success) {
+      setValidationAlert({
+        title: "Gagal Menyimpan Aset",
+        message: res.message || "Terjadi kesalahan saat menyimpan aset ke database.",
+      });
+      return;
+    }
+
     setNewAssetName("");
     setNewAssetTier("LIQUID");
     setNewAssetMainValue(0);
@@ -373,12 +452,15 @@ export default function WebPage() {
     setNewAssetBucket("");
     setNewAssetIsExternal(false);
     setIsCreateAssetOpen(false);
+    setMasterSuccessToast("Aset berhasil disimpan ke database!");
+    setTimeout(() => setMasterSuccessToast(null), 3000);
   };
 
-  const handleUpdateAssetSubmit = (e: React.FormEvent) => {
+  const handleUpdateAssetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAsset) return;
-    updateAsset(editingAsset.id, {
+    setIsSubmittingEditUnit(true);
+    const res = await updateAsset(editingAsset.id, {
       name: editingAsset.name.trim(),
       liquidity_tier: editingAsset.liquidity_tier,
       main_value: editingAsset.main_value,
@@ -387,16 +469,31 @@ export default function WebPage() {
       goal_bucket: editingAsset.goal_bucket?.trim() || undefined,
       is_external: editingAsset.is_external,
     });
+    setIsSubmittingEditUnit(false);
+
+    if (!res.success) {
+      setValidationAlert({
+        title: "Gagal Update Aset",
+        message: res.message || "Terjadi kesalahan saat memperbarui aset di database.",
+      });
+      return;
+    }
+
     setEditingAsset(null);
+    setMasterSuccessToast("Perubahan aset berhasil disimpan!");
+    setTimeout(() => setMasterSuccessToast(null), 3000);
   };
 
-  const handleDeleteAsset = (id: string) => {
-    const res = deleteAsset(id);
+  const handleDeleteAsset = async (id: string) => {
+    const res = await deleteAsset(id);
     if (!res.success) {
       setValidationAlert({
         title: "Penghapusan Aset Ditolak",
         message: res.message || "Aset tidak dapat dihapus karena masih terhubung dengan Cashflow Item.",
       });
+    } else {
+      setMasterSuccessToast("Aset berhasil dihapus.");
+      setTimeout(() => setMasterSuccessToast(null), 3000);
     }
   };
 
@@ -629,11 +726,54 @@ export default function WebPage() {
               </p>
             </div>
 
-            {/* MonthPicker in Header */}
-            <div className="flex items-center gap-3">
+            {/* MonthPicker & Cloud Sync in Header */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* Cloud Sync Status Indicator */}
+              <button
+                type="button"
+                onClick={() => retryCloudSync()}
+                title="Status koneksi database cloud. Klik untuk sinkronisasi ulang."
+                className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 transition ${
+                  cloudSyncStatus === "CONNECTED"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : cloudSyncStatus === "CONNECTING"
+                    ? "bg-amber-50 text-amber-700 border-amber-200 animate-pulse"
+                    : cloudSyncStatus === "OFFLINE"
+                    ? "bg-slate-100 text-slate-600 border-slate-300"
+                    : "bg-rose-50 text-rose-700 border-rose-200"
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    cloudSyncStatus === "CONNECTED"
+                      ? "bg-emerald-500"
+                      : cloudSyncStatus === "CONNECTING"
+                      ? "bg-amber-500"
+                      : cloudSyncStatus === "OFFLINE"
+                      ? "bg-slate-400"
+                      : "bg-rose-500"
+                  }`}
+                />
+                <span>
+                  {cloudSyncStatus === "CONNECTED" && "Cloud DB Active"}
+                  {cloudSyncStatus === "CONNECTING" && "Connecting DB..."}
+                  {cloudSyncStatus === "OFFLINE" && "Offline Mode"}
+                  {cloudSyncStatus === "ERROR" && "DB Error (Klik Retry)"}
+                </span>
+                <RefreshCw className={`w-3 h-3 ml-0.5 opacity-60 ${cloudSyncStatus === "CONNECTING" ? "animate-spin" : ""}`} />
+              </button>
+
               <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
             </div>
           </div>
+
+          {/* Master Data Global Toast */}
+          {masterSuccessToast && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-4 py-2.5 rounded-2xl flex items-center gap-2 animate-in fade-in shadow-xs">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{masterSuccessToast}</span>
+            </div>
+          )}
 
           {/* ============================================================== */}
           {/* TAB 1: BUDGET MODULE (WITH PREVIOUS MONTH INHERITANCE) */}
@@ -1766,9 +1906,21 @@ export default function WebPage() {
 
                   <button
                     type="submit"
-                    className="w-full py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                    disabled={isSubmittingUnit}
+                    className={`w-full py-2 font-semibold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 ${
+                      isSubmittingUnit
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        : "bg-[#2196F3] hover:bg-[#1E88E5] text-white"
+                    }`}
                   >
-                    Simpan ke Master
+                    {isSubmittingUnit ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Menyimpan ke Database...</span>
+                      </>
+                    ) : (
+                      <span>Simpan ke Master</span>
+                    )}
                   </button>
                 </form>
               </div>
@@ -2235,9 +2387,21 @@ export default function WebPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                  disabled={isSubmittingEditUnit}
+                  className={`px-4 py-2 font-semibold text-xs rounded-xl transition shadow-xs flex items-center gap-1.5 ${
+                    isSubmittingEditUnit
+                      ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                      : "bg-[#2196F3] hover:bg-[#1E88E5] text-white"
+                  }`}
                 >
-                  Simpan Perubahan
+                  {isSubmittingEditUnit ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menyimpan ke DB...</span>
+                    </>
+                  ) : (
+                    <span>Simpan Perubahan</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -2335,9 +2499,21 @@ export default function WebPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                  disabled={isSubmittingEditUnit}
+                  className={`px-4 py-2 font-semibold text-xs rounded-xl transition shadow-xs flex items-center gap-1.5 ${
+                    isSubmittingEditUnit
+                      ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                      : "bg-[#2196F3] hover:bg-[#1E88E5] text-white"
+                  }`}
                 >
-                  Simpan Perubahan
+                  {isSubmittingEditUnit ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menyimpan ke DB...</span>
+                    </>
+                  ) : (
+                    <span>Simpan Perubahan</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -2561,9 +2737,21 @@ export default function WebPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs"
+                  disabled={isSubmittingEditUnit}
+                  className={`px-4 py-2 font-semibold text-xs rounded-xl transition shadow-xs flex items-center gap-1.5 ${
+                    isSubmittingEditUnit
+                      ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                      : "bg-[#2196F3] hover:bg-[#1E88E5] text-white"
+                  }`}
                 >
-                  Simpan Perubahan
+                  {isSubmittingEditUnit ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menyimpan ke DB...</span>
+                    </>
+                  ) : (
+                    <span>Simpan Perubahan</span>
+                  )}
                 </button>
               </div>
             </form>

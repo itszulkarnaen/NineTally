@@ -110,6 +110,8 @@ export const defaultPayrollSettings: PayrollSettings = {
   last_posted_period: "",
 };
 
+export type CloudSyncStatus = "CONNECTED" | "CONNECTING" | "OFFLINE" | "ERROR";
+
 interface AppContextType {
   // Data
   assets: Asset[];
@@ -118,6 +120,10 @@ interface AppContextType {
   wishlists: WishlistItem[];
   transactions: CashflowTransaction[];
   
+  // Cloud Sync & Realtime Status
+  cloudSyncStatus: CloudSyncStatus;
+  retryCloudSync: () => Promise<{ success: boolean; message?: string }>;
+
   // Payroll & Payday Engine
   payrollSettings: PayrollSettings;
   updatePayrollSettings: (settings: Partial<PayrollSettings>) => void;
@@ -151,16 +157,16 @@ interface AppContextType {
   addTransaction: (tx: Omit<CashflowTransaction, "id" | "created_at">) => void;
   deleteTransaction: (txId: string) => void;
 
-  // Actions: Master Data
-  createCashflowUnit: (unit: Omit<CashflowUnit, "id" | "is_active">) => void;
-  updateCashflowUnit: (id: string, unit: Partial<CashflowUnit>) => void;
-  deleteCashflowUnit: (id: string) => { success: boolean; message?: string };
-  createCategory: (cat: Omit<CashflowCategory, "id">) => void;
-  updateCategory: (id: string, cat: Partial<CashflowCategory>) => void;
-  deleteCategory: (id: string) => { success: boolean; message?: string };
-  createAsset: (asset: Omit<Asset, "id" | "total_value">) => void;
-  updateAsset: (id: string, asset: Partial<Asset>) => void;
-  deleteAsset: (id: string) => { success: boolean; message?: string };
+  // Actions: Master Data (with Database Error Handling)
+  createCashflowUnit: (unit: Omit<CashflowUnit, "id" | "is_active">) => Promise<{ success: boolean; message?: string }>;
+  updateCashflowUnit: (id: string, unit: Partial<CashflowUnit>) => Promise<{ success: boolean; message?: string }>;
+  deleteCashflowUnit: (id: string) => Promise<{ success: boolean; message?: string }>;
+  createCategory: (cat: Omit<CashflowCategory, "id">) => Promise<{ success: boolean; message?: string }>;
+  updateCategory: (id: string, cat: Partial<CashflowCategory>) => Promise<{ success: boolean; message?: string }>;
+  deleteCategory: (id: string) => Promise<{ success: boolean; message?: string }>;
+  createAsset: (asset: Omit<Asset, "id" | "total_value">) => Promise<{ success: boolean; message?: string }>;
+  updateAsset: (id: string, asset: Partial<Asset>) => Promise<{ success: boolean; message?: string }>;
+  deleteAsset: (id: string) => Promise<{ success: boolean; message?: string }>;
   toggleWishlistBought: (wishlistId: string) => void;
 }
 
@@ -178,6 +184,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [periodsMap, setPeriodsMap] = useState<Record<string, MonthPeriodData>>(initialMonthsData);
   const [selectedMonth, setSelectedMonth] = useState<string>("2026-11");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>(
+    !isSupabaseConfigured
+      ? "OFFLINE"
+      : typeof navigator !== "undefined" && !navigator.onLine
+      ? "OFFLINE"
+      : "CONNECTING"
+  );
 
   // 1. Initial Load: Instant LocalStorage first, then Cloud Sync with Supabase
   useEffect(() => {
@@ -351,8 +364,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
             setPeriodsMap((prev) => ({ ...prev, ...periodsDictionary }));
           }
+          if (isMounted) setCloudSyncStatus("CONNECTED");
         } catch (err) {
           console.warn("Supabase initial sync skipped or tables not yet created:", err);
+          if (isMounted) setCloudSyncStatus("ERROR");
         }
       }
     }
@@ -729,11 +744,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     channel.subscribe((status) => {
       console.log("Supabase Realtime Channel Status:", status);
+      if (status === "SUBSCRIBED") {
+        setCloudSyncStatus("CONNECTED");
+      } else if (status === "CLOSED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        setCloudSyncStatus("ERROR");
+      } else {
+        setCloudSyncStatus("CONNECTING");
+      }
     });
+
+    const handleOnline = () => {
+      setCloudSyncStatus("CONNECTING");
+      refreshTransactionsFromCloud();
+      refreshBudgetItemsFromCloud();
+    };
+    const handleOffline = () => setCloudSyncStatus("OFFLINE");
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     realtimeChannelRef.current = channel;
 
     return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
       supabase.removeChannel(channel);
       realtimeChannelRef.current = null;
     };
@@ -1586,57 +1620,209 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [isLoaded, payrollSettings]);
 
-  // Master Data: Create Cashflow Unit
-  const createCashflowUnit = (unit: Omit<CashflowUnit, "id" | "is_active">) => {
+  // Cloud Sync Manual Retry Action
+  const retryCloudSync = async (): Promise<{ success: boolean; message?: string }> => {
+    if (!isSupabaseConfigured) {
+      setCloudSyncStatus("OFFLINE");
+      return { success: false, message: "Kredensial database Supabase belum terkonfigurasi." };
+    }
+    setCloudSyncStatus("CONNECTING");
+    try {
+      const [catRes, assetRes, unitRes, periodRes, itemRes, txRes, wlRes] = await Promise.all([
+        supabase.from("cashflow_categories").select("*").order("sort_order", { ascending: true }),
+        supabase.from("assets").select("*"),
+        supabase.from("cashflow_units").select("*").order("code", { ascending: true }),
+        supabase.from("budget_periods").select("*").order("period_month", { ascending: true }),
+        supabase.from("budget_period_items").select("*").order("sort_order", { ascending: true }),
+        supabase.from("cashflow_transactions").select("*").order("date", { ascending: false }),
+        supabase.from("wishlists").select("*").order("priority", { ascending: true }),
+      ]);
+      if (catRes.data) setCategories(catRes.data);
+      if (unitRes.data) setCashflowUnits(unitRes.data);
+      if (assetRes.data) {
+        setAssets(
+          assetRes.data.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            liquidity_tier: a.liquidity_tier,
+            main_value: Number(a.main_value) || 0,
+            generating_rate: Number(a.generating_rate) || 0,
+            start_date: a.start_date || undefined,
+            income_generated: Number(a.income_generated) || 0,
+            total_value: Number(a.total_value) || 0,
+            goal_bucket: a.goal_bucket || undefined,
+            is_external: Boolean(a.is_external),
+          }))
+        );
+      }
+      setCloudSyncStatus("CONNECTED");
+      return { success: true };
+    } catch (e: any) {
+      setCloudSyncStatus("ERROR");
+      return { success: false, message: e.message || "Gagal menghubungi database." };
+    }
+  };
+
+  // Master Data: Create Cashflow Unit (With Strict Database Error Handling)
+  const createCashflowUnit = async (
+    unit: Omit<CashflowUnit, "id" | "is_active">
+  ): Promise<{ success: boolean; message?: string }> => {
+    const cleanCode = unit.code ? unit.code.trim().toUpperCase() : `CF-${Date.now().toString().slice(-6)}`;
+    const cleanName = unit.name ? unit.name.trim() : "";
+
+    if (!cleanName) {
+      return { success: false, message: "Nama Cashflow Item tidak boleh kosong." };
+    }
+
+    if (cashflowUnits.some((u) => u.code.toUpperCase() === cleanCode)) {
+      return {
+        success: false,
+        message: `Kode '${cleanCode}' sudah digunakan oleh Cashflow Item lain. Gunakan kode unik.`,
+      };
+    }
+
+    // Sanitize foreign key references:
+    // Postgres enforces category foreign key ONLY when unit_type === 'EXPENSE'
+    const sanitizedCategory = unit.unit_type === "EXPENSE" && unit.category ? unit.category : null;
+    const sanitizedAssetId = unit.unit_type === "ASSET" && unit.linked_asset_id ? unit.linked_asset_id : null;
+
     const newUnit: CashflowUnit = {
       ...unit,
       id: `cf-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
+      category: sanitizedCategory || undefined,
+      linked_asset_id: sanitizedAssetId || undefined,
       is_active: true,
     };
-    setCashflowUnits((prev) => [...prev, newUnit]);
 
     if (isSupabaseConfigured) {
-      supabase
-        .from("cashflow_units")
-        .insert({
+      try {
+        const { error } = await supabase.from("cashflow_units").insert({
           id: newUnit.id,
           code: newUnit.code,
           name: newUnit.name,
           unit_type: newUnit.unit_type,
-          category: newUnit.category || null,
+          category: sanitizedCategory,
           default_urgency: newUnit.default_urgency,
-          linked_asset_id: newUnit.linked_asset_id || null,
+          linked_asset_id: sanitizedAssetId,
           is_active: newUnit.is_active,
-        })
-        .then(({ error }) => {
-          if (error) console.error("Supabase insert unit error:", error.message);
         });
+
+        if (error) {
+          console.error("Supabase insert unit error:", error);
+          let userMsg = `Gagal menyimpan ke database Supabase: ${error.message}`;
+          if (error.code === "23505") {
+            userMsg = `Kode item '${newUnit.code}' sudah terdaftar di database. Silakan gunakan kode lain.`;
+          } else if (error.code === "23503") {
+            userMsg = `Kategori '${sanitizedCategory}' tidak valid di database.`;
+          }
+          return { success: false, message: userMsg };
+        }
+      } catch (err: any) {
+        console.error("Supabase insert unit exception:", err);
+        return {
+          success: false,
+          message: `Koneksi database terputus atau offline: ${err.message || "Gagal menghubungi server"}`,
+        };
+      }
     }
 
+    // Only update local state if DB successfully saved
+    setCashflowUnits((prev) => [...prev, newUnit]);
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
+    return { success: true };
   };
 
-  // Master Data: Update Cashflow Unit
-  const updateCashflowUnit = (id: string, unitUpdate: Partial<CashflowUnit>) => {
-    setCashflowUnits((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, ...unitUpdate } : u))
-    );
+  // Master Data: Update Cashflow Unit (With Strict Database Error Handling)
+  const updateCashflowUnit = async (
+    id: string,
+    unitUpdate: Partial<CashflowUnit>
+  ): Promise<{ success: boolean; message?: string }> => {
+    const existing = cashflowUnits.find((u) => u.id === id);
+    if (!existing) {
+      return { success: false, message: "Cashflow Item tidak ditemukan." };
+    }
+
+    const cleanCode = unitUpdate.code ? unitUpdate.code.trim().toUpperCase() : existing.code;
+    const cleanName = unitUpdate.name !== undefined ? unitUpdate.name.trim() : existing.name;
+
+    if (!cleanName) {
+      return { success: false, message: "Nama Cashflow Item tidak boleh kosong." };
+    }
+
+    if (cashflowUnits.some((u) => u.id !== id && u.code.toUpperCase() === cleanCode)) {
+      return {
+        success: false,
+        message: `Kode '${cleanCode}' sudah digunakan oleh Cashflow Item lain.`,
+      };
+    }
+
+    const targetType = unitUpdate.unit_type !== undefined ? unitUpdate.unit_type : existing.unit_type;
+    const rawCategory = unitUpdate.category !== undefined ? unitUpdate.category : existing.category;
+    const sanitizedCategory = targetType === "EXPENSE" && rawCategory ? rawCategory : null;
+
+    const rawAsset = unitUpdate.linked_asset_id !== undefined ? unitUpdate.linked_asset_id : existing.linked_asset_id;
+    const sanitizedAssetId = targetType === "ASSET" && rawAsset ? rawAsset : null;
 
     if (isSupabaseConfigured) {
-      supabase
-        .from("cashflow_units")
-        .update(unitUpdate)
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.error("Supabase update unit error:", error.message);
-        });
+      const dbPayload: any = {
+        name: cleanName,
+        code: cleanCode,
+        unit_type: targetType,
+        category: sanitizedCategory,
+        linked_asset_id: sanitizedAssetId,
+      };
+      if (unitUpdate.default_urgency !== undefined) dbPayload.default_urgency = unitUpdate.default_urgency;
+      if (unitUpdate.is_active !== undefined) dbPayload.is_active = unitUpdate.is_active;
+
+      try {
+        const { error } = await supabase
+          .from("cashflow_units")
+          .update(dbPayload)
+          .eq("id", id);
+
+        if (error) {
+          console.error("Supabase update unit error:", error);
+          let userMsg = `Gagal memperbarui item di database: ${error.message}`;
+          if (error.code === "23505") {
+            userMsg = `Kode item '${cleanCode}' sudah terdaftar di database.`;
+          } else if (error.code === "23503") {
+            userMsg = `Kategori '${sanitizedCategory}' tidak valid di database.`;
+          }
+          return { success: false, message: userMsg };
+        }
+      } catch (err: any) {
+        console.error("Supabase update unit exception:", err);
+        return {
+          success: false,
+          message: `Koneksi database terputus atau offline: ${err.message || "Gagal menghubungi server"}`,
+        };
+      }
     }
 
+    // Update local state only after DB success
+    setCashflowUnits((prev) =>
+      prev.map((u) => {
+        if (u.id !== id) return u;
+        return {
+          ...u,
+          ...unitUpdate,
+          code: cleanCode,
+          name: cleanName,
+          unit_type: targetType,
+          category: sanitizedCategory || undefined,
+          linked_asset_id: sanitizedAssetId || undefined,
+        };
+      })
+    );
+
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
+    return { success: true };
   };
 
-  // Master Data: Delete Cashflow Unit with strict validation
-  const deleteCashflowUnit = (id: string): { success: boolean; message?: string } => {
+  // Master Data: Delete Cashflow Unit with strict validation & DB sync
+  const deleteCashflowUnit = async (id: string): Promise<{ success: boolean; message?: string }> => {
     const target = cashflowUnits.find((u) => u.id === id);
     if (!target) return { success: false, message: "Cashflow Item tidak ditemukan." };
 
@@ -1666,63 +1852,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Safe to delete!
-    setCashflowUnits((prev) => prev.filter((u) => u.id !== id));
-
     if (isSupabaseConfigured) {
-      supabase
-        .from("cashflow_units")
-        .delete()
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.error("Supabase delete unit error:", error.message);
-        });
+      try {
+        const { error } = await supabase.from("cashflow_units").delete().eq("id", id);
+        if (error) {
+          console.error("Supabase delete unit error:", error);
+          return { success: false, message: `Gagal menghapus item dari database: ${error.message}` };
+        }
+      } catch (err: any) {
+        return { success: false, message: `Koneksi database bermasalah: ${err.message || "Gagal menghubungi server"}` };
+      }
     }
 
+    setCashflowUnits((prev) => prev.filter((u) => u.id !== id));
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
     return { success: true };
   };
 
-  // Master Data: Categories / Labels CRUD
-  const createCategory = (cat: Omit<CashflowCategory, "id">) => {
+  // Master Data: Categories / Labels CRUD with DB Error Handling
+  const createCategory = async (
+    cat: Omit<CashflowCategory, "id">
+  ): Promise<{ success: boolean; message?: string }> => {
+    const cleanCode = cat.code.trim().toUpperCase();
+    const cleanName = cat.name.trim();
+
+    if (!cleanName || !cleanCode) {
+      return { success: false, message: "Nama dan kode kategori tidak boleh kosong." };
+    }
+
+    if (categories.some((c) => c.code.toUpperCase() === cleanCode)) {
+      return { success: false, message: `Kode kategori '${cleanCode}' sudah digunakan.` };
+    }
+
     const newCat: CashflowCategory = {
       ...cat,
       id: `cat-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
     };
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from("cashflow_categories").insert(newCat);
+        if (error) {
+          console.error("Supabase insert category error:", error);
+          return { success: false, message: `Gagal menyimpan kategori ke database: ${error.message}` };
+        }
+      } catch (err: any) {
+        return { success: false, message: `Koneksi database bermasalah: ${err.message || "Gagal menghubungi server"}` };
+      }
+    }
+
     setCategories((prev) => [...prev, newCat]);
-
-    if (isSupabaseConfigured) {
-      supabase
-        .from("cashflow_categories")
-        .insert(newCat)
-        .then(({ error }) => {
-          if (error) console.error("Supabase insert category error:", error.message);
-        });
-    }
-
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
+    return { success: true };
   };
 
-  const updateCategory = (id: string, catUpdate: Partial<CashflowCategory>) => {
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...catUpdate } : c))
-    );
+  const updateCategory = async (
+    id: string,
+    catUpdate: Partial<CashflowCategory>
+  ): Promise<{ success: boolean; message?: string }> => {
+    const existing = categories.find((c) => c.id === id);
+    if (!existing) return { success: false, message: "Kategori tidak ditemukan." };
 
-    if (isSupabaseConfigured) {
-      supabase
-        .from("cashflow_categories")
-        .update(catUpdate)
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.error("Supabase update category error:", error.message);
-        });
+    if (catUpdate.code) {
+      const cleanCode = catUpdate.code.trim().toUpperCase();
+      if (categories.some((c) => c.id !== id && c.code.toUpperCase() === cleanCode)) {
+        return { success: false, message: `Kode kategori '${cleanCode}' sudah digunakan.` };
+      }
     }
 
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from("cashflow_categories").update(catUpdate).eq("id", id);
+        if (error) {
+          console.error("Supabase update category error:", error);
+          return { success: false, message: `Gagal memperbarui kategori di database: ${error.message}` };
+        }
+      } catch (err: any) {
+        return { success: false, message: `Koneksi database bermasalah: ${err.message || "Gagal menghubungi server"}` };
+      }
+    }
+
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...catUpdate } : c)));
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
+    return { success: true };
   };
 
-  // Master Data: Delete Category with validation check
-  const deleteCategory = (id: string): { success: boolean; message?: string } => {
+  // Master Data: Delete Category with validation check & DB sync
+  const deleteCategory = async (id: string): Promise<{ success: boolean; message?: string }> => {
     const target = categories.find((c) => c.id === id);
     if (!target) return { success: false, message: "Kategori tidak ditemukan." };
 
@@ -1736,35 +1954,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-
     if (isSupabaseConfigured) {
-      supabase
-        .from("cashflow_categories")
-        .delete()
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.error("Supabase delete category error:", error.message);
-        });
+      try {
+        const { error } = await supabase.from("cashflow_categories").delete().eq("id", id);
+        if (error) {
+          console.error("Supabase delete category error:", error);
+          return { success: false, message: `Gagal menghapus kategori dari database: ${error.message}` };
+        }
+      } catch (err: any) {
+        return { success: false, message: `Koneksi database bermasalah: ${err.message || "Gagal menghubungi server"}` };
+      }
     }
 
+    setCategories((prev) => prev.filter((c) => c.id !== id));
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
     return { success: true };
   };
 
-  // Master Data: Create Asset
-  const createAsset = (asset: Omit<Asset, "id" | "total_value">) => {
+  // Master Data: Create Asset with DB Error Handling
+  const createAsset = async (
+    asset: Omit<Asset, "id" | "total_value">
+  ): Promise<{ success: boolean; message?: string }> => {
+    const cleanName = asset.name.trim();
+    if (!cleanName) return { success: false, message: "Nama aset tidak boleh kosong." };
+
     const newAsset: Asset = {
       ...asset,
       id: `ast-${Date.now()}`,
+      name: cleanName,
       total_value: asset.main_value + asset.income_generated,
     };
-    setAssets((prev) => [...prev, newAsset]);
 
     if (isSupabaseConfigured) {
-      supabase
-        .from("assets")
-        .insert({
+      try {
+        const { error } = await supabase.from("assets").insert({
           id: newAsset.id,
           name: newAsset.name,
           liquidity_tier: newAsset.liquidity_tier,
@@ -1775,47 +1998,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           total_value: newAsset.total_value,
           goal_bucket: newAsset.goal_bucket || null,
           is_external: newAsset.is_external || false,
-        })
-        .then(({ error }) => {
-          if (error) console.error("Supabase insert asset error:", error.message);
         });
+
+        if (error) {
+          console.error("Supabase insert asset error:", error);
+          return { success: false, message: `Gagal menyimpan aset ke database: ${error.message}` };
+        }
+      } catch (err: any) {
+        return { success: false, message: `Koneksi database bermasalah: ${err.message || "Gagal menghubungi server"}` };
+      }
     }
 
+    setAssets((prev) => [...prev, newAsset]);
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
+    return { success: true };
   };
 
-  // Master Data: Update Asset
-  const updateAsset = (id: string, assetUpdate: Partial<Asset>) => {
+  // Master Data: Update Asset with DB Error Handling
+  const updateAsset = async (
+    id: string,
+    assetUpdate: Partial<Asset>
+  ): Promise<{ success: boolean; message?: string }> => {
+    const existing = assets.find((a) => a.id === id);
+    if (!existing) return { success: false, message: "Aset tidak ditemukan." };
+
+    const main = assetUpdate.main_value ?? existing.main_value;
+    const inc = assetUpdate.income_generated ?? existing.income_generated;
+    const calculatedTotal = main + inc;
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase
+          .from("assets")
+          .update({
+            ...assetUpdate,
+            total_value: calculatedTotal,
+          })
+          .eq("id", id);
+
+        if (error) {
+          console.error("Supabase update asset error:", error);
+          return { success: false, message: `Gagal memperbarui aset di database: ${error.message}` };
+        }
+      } catch (err: any) {
+        return { success: false, message: `Koneksi database bermasalah: ${err.message || "Gagal menghubungi server"}` };
+      }
+    }
+
     setAssets((prev) =>
       prev.map((a) => {
         if (a.id === id) {
-          const main = assetUpdate.main_value ?? a.main_value;
-          const inc = assetUpdate.income_generated ?? a.income_generated;
           return {
             ...a,
             ...assetUpdate,
-            total_value: main + inc,
+            total_value: calculatedTotal,
           };
         }
         return a;
       })
     );
 
-    if (isSupabaseConfigured) {
-      supabase
-        .from("assets")
-        .update(assetUpdate)
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.error("Supabase update asset error:", error.message);
-        });
-    }
-
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
+    return { success: true };
   };
 
-  // Master Data: Delete Asset with validation check
-  const deleteAsset = (id: string): { success: boolean; message?: string } => {
+  // Master Data: Delete Asset with validation check & DB sync
+  const deleteAsset = async (id: string): Promise<{ success: boolean; message?: string }> => {
     const target = assets.find((a) => a.id === id);
     if (!target) return { success: false, message: "Aset tidak ditemukan." };
 
@@ -1828,18 +2076,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    setAssets((prev) => prev.filter((a) => a.id !== id));
-
     if (isSupabaseConfigured) {
-      supabase
-        .from("assets")
-        .delete()
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.error("Supabase delete asset error:", error.message);
-        });
+      try {
+        const { error } = await supabase.from("assets").delete().eq("id", id);
+        if (error) {
+          console.error("Supabase delete asset error:", error);
+          return { success: false, message: `Gagal menghapus aset dari database: ${error.message}` };
+        }
+      } catch (err: any) {
+        return { success: false, message: `Koneksi database bermasalah: ${err.message || "Gagal menghubungi server"}` };
+      }
     }
 
+    setAssets((prev) => prev.filter((a) => a.id !== id));
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
     return { success: true };
   };
@@ -1899,6 +2148,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateItemProjection,
         addTransaction,
         deleteTransaction,
+        cloudSyncStatus,
+        retryCloudSync,
         createCashflowUnit,
         updateCashflowUnit,
         deleteCashflowUnit,
