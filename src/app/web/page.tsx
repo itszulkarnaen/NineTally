@@ -895,17 +895,8 @@ export default function WebPage() {
                 };
               }
 
-              // 2. Settled (Lunas / Terbayar penuh sesuai budget)
-              if (item.is_realized || (budget > 0 && spent >= budget)) {
-                return {
-                  label: "Settled",
-                  badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
-                  icon: Check,
-                };
-              }
-
-              // 3. Partially Paid (Dibayar sebagian)
-              if (spent > 0 && spent < budget) {
+              // 2. Partially Paid (Realisasi berjalan tapi belum mencapai 100% budget)
+              if (budget > 0 && spent > 0 && spent < budget) {
                 return {
                   label: "Partially Paid",
                   badgeClass: "bg-sky-50 text-sky-700 border-sky-200",
@@ -913,7 +904,16 @@ export default function WebPage() {
                 };
               }
 
-              // 4. Outstanding (Belum dibayar)
+              // 3. Settled (Lunas / Terbayar 100% sesuai budget atau ditandai manual)
+              if ((budget > 0 && spent >= budget) || item.is_realized) {
+                return {
+                  label: "Settled",
+                  badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                  icon: Check,
+                };
+              }
+
+              // 4. Outstanding (Belum ada realisasi / 0)
               return {
                 label: "Outstanding",
                 badgeClass: "bg-slate-100 text-slate-600 border-slate-200",

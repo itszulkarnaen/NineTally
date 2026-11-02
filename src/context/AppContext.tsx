@@ -277,7 +277,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                       projection_amount: finalRealization,
                       actual_amount: finalRealization,
                       urgency: item.urgency,
-                      is_realized: isLocked ? Boolean(item.is_realized) : txSum > 0,
+                      is_realized: isLocked 
+                        ? Boolean(item.is_realized) 
+                        : (Number(item.budget_amount) > 0 ? txSum >= Number(item.budget_amount) : txSum > 0),
                       notes: item.notes || undefined,
                       sort_order: Number(item.sort_order) || 0,
                     };
@@ -367,7 +369,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   realization_amount: total,
                   projection_amount: total,
                   actual_amount: total,
-                  is_realized: total > 0,
+                  is_realized: item.budget_amount > 0 ? total >= item.budget_amount : total > 0,
                 };
               }),
             };
@@ -492,7 +494,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                       realization_amount: unitTotal,
                       projection_amount: unitTotal,
                       actual_amount: unitTotal,
-                      is_realized: unitTotal > 0,
+                      is_realized: i.budget_amount > 0 ? unitTotal >= i.budget_amount : unitTotal > 0,
                     }
                   : i
               ),
@@ -1121,6 +1123,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const delta = isIncome ? tx.amount : -tx.amount;
     const newBcaBalance = currentBca + delta;
 
+    const targetBudgetItem = currentPeriod.items.find((i) => i.cashflow_unit_id === tx.cashflow_unit_id);
+    const isTargetItemRealized = targetBudgetItem && targetBudgetItem.budget_amount > 0 
+      ? unitTotal >= targetBudgetItem.budget_amount 
+      : unitTotal > 0;
+
     setPeriodsMap((prev) => {
       const current = prev[tx.period_id] || currentMonthData;
       return {
@@ -1135,7 +1142,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   realization_amount: unitTotal,
                   projection_amount: unitTotal,
                   actual_amount: unitTotal,
-                  is_realized: true,
+                  is_realized: i.budget_amount > 0 ? unitTotal >= i.budget_amount : unitTotal > 0,
                 }
               : i
           ),
@@ -1165,7 +1172,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           realization_amount: unitTotal,
           projection_amount: unitTotal,
           actual_amount: unitTotal,
-          is_realized: true,
+          is_realized: isTargetItemRealized,
         })
         .eq("period_id", tx.period_id)
         .eq("cashflow_unit_id", tx.cashflow_unit_id)
@@ -1236,6 +1243,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const refundDelta = isIncome ? -targetTx.amount : targetTx.amount;
     const newBcaBalance = currentBca + refundDelta;
 
+    const targetBudgetItem = currentPeriod.items.find((i) => i.cashflow_unit_id === targetTx.cashflow_unit_id);
+    const isTargetItemRealized = targetBudgetItem && targetBudgetItem.budget_amount > 0 
+      ? unitTotal >= targetBudgetItem.budget_amount 
+      : unitTotal > 0;
+
     setPeriodsMap((prev) => {
       const current = prev[targetTx.period_id] || currentMonthData;
       return {
@@ -1250,7 +1262,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   realization_amount: unitTotal,
                   projection_amount: unitTotal,
                   actual_amount: unitTotal,
-                  is_realized: unitTotal > 0,
+                  is_realized: i.budget_amount > 0 ? unitTotal >= i.budget_amount : unitTotal > 0,
                 }
               : i
           ),
@@ -1274,7 +1286,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           realization_amount: unitTotal,
           projection_amount: unitTotal,
           actual_amount: unitTotal,
-          is_realized: unitTotal > 0,
+          is_realized: isTargetItemRealized,
         })
         .eq("period_id", targetTx.period_id)
         .eq("cashflow_unit_id", targetTx.cashflow_unit_id)
