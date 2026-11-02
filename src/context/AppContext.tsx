@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { Asset, BudgetPeriodItem, CashflowCategory, CashflowTransaction, CashflowUnit, WishlistItem, PeriodStatus, UrgencyLevel } from "@/types";
+import { Asset, BudgetPeriodItem, CashflowCategory, CashflowTransaction, CashflowUnit, WishlistItem, PeriodStatus, UrgencyLevel, PayrollSettings } from "@/types";
 import { initialAssets, initialCashflowUnits, initialWishlists, initialTransactions, initialCategories } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 
@@ -75,6 +75,41 @@ const initialMonthsData: Record<string, MonthPeriodData> = {
   },
 };
 
+export function getNextMonthKey(monthKey: string): string {
+  const [yearStr, monthStr] = monthKey.split("-");
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  if (month === 12) {
+    return `${year + 1}-01`;
+  }
+  return `${year}-${String(month + 1).padStart(2, "0")}`;
+}
+
+export function getCurrentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function isPaydayReached(settings: PayrollSettings, checkDate: Date = new Date()): boolean {
+  const currentDay = checkDate.getDate();
+  const lastDayOfMonth = new Date(checkDate.getFullYear(), checkDate.getMonth() + 1, 0).getDate();
+  if (settings.is_last_day) {
+    return currentDay >= lastDayOfMonth;
+  }
+  return currentDay >= settings.payday_day;
+}
+
+export const defaultPayrollSettings: PayrollSettings = {
+  monthly_salary: 10000000,
+  payday_day: 25,
+  is_last_day: true,
+  target_unit_id: "cf-inc-1",
+  target_bank: "BCA",
+  auto_post_transaction: true,
+  next_month_allocation: true,
+  last_posted_period: "",
+};
+
 interface AppContextType {
   // Data
   assets: Asset[];
@@ -82,6 +117,11 @@ interface AppContextType {
   categories: CashflowCategory[];
   wishlists: WishlistItem[];
   transactions: CashflowTransaction[];
+  
+  // Payroll & Payday Engine
+  payrollSettings: PayrollSettings;
+  updatePayrollSettings: (settings: Partial<PayrollSettings>) => void;
+  triggerPaydayExecution: (monthKey?: string) => { success: boolean; message: string; txAdded?: boolean; budgetAllocated?: boolean };
   
   // Multi-month state
   selectedMonth: string;
@@ -132,6 +172,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [categories, setCategories] = useState<CashflowCategory[]>(initialCategories);
   const [wishlists, setWishlists] = useState<WishlistItem[]>(initialWishlists);
   const [transactions, setTransactions] = useState<CashflowTransaction[]>(initialTransactions);
+  const [payrollSettings, setPayrollSettings] = useState<PayrollSettings>(defaultPayrollSettings);
   
   // Multi-month periods dictionary
   const [periodsMap, setPeriodsMap] = useState<Record<string, MonthPeriodData>>(initialMonthsData);
@@ -150,6 +191,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const savedCategories = localStorage.getItem("scf_categories");
         const savedWishlists = localStorage.getItem("scf_wishlists");
         const savedMonth = localStorage.getItem("scf_selected_month");
+        const savedPayroll = localStorage.getItem("ninetally_payroll_settings");
+
+        if (savedPayroll) {
+          try {
+            setPayrollSettings(JSON.parse(savedPayroll));
+          } catch (e) {}
+        }
 
         // Cache-buster migration: wipe old dummy periods & transactions from client storage
         const savedVersion = localStorage.getItem("scf_data_version");
@@ -182,7 +230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn("⚠️ NineTally: Supabase env vars not found or incomplete. Running in offline/localStorage mode.");
       } else {
         try {
-          const [catRes, assetRes, unitRes, periodRes, itemRes, txRes, wlRes] = await Promise.all([
+          const [catRes, assetRes, unitRes, periodRes, itemRes, txRes, wlRes, payrollRes] = await Promise.all([
             supabase.from("cashflow_categories").select("*").order("sort_order", { ascending: true }),
             supabase.from("assets").select("*"),
             supabase.from("cashflow_units").select("*").order("code", { ascending: true }),
@@ -190,9 +238,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             supabase.from("budget_period_items").select("*").order("sort_order", { ascending: true }),
             supabase.from("cashflow_transactions").select("*").order("date", { ascending: false }),
             supabase.from("wishlists").select("*").order("priority", { ascending: true }),
+            supabase.from("payroll_settings").select("*").eq("id", "default").maybeSingle(),
           ]);
 
           if (!isMounted) return;
+
+          if (payrollRes.data) {
+            const p = payrollRes.data;
+            setPayrollSettings({
+              monthly_salary: Number(p.monthly_salary) || 10000000,
+              payday_day: Number(p.payday_day) || 25,
+              is_last_day: Boolean(p.is_last_day),
+              target_bank: p.target_bank || "BCA",
+              target_unit_id: p.target_unit_id || "cf-inc-1",
+              auto_post_transaction: Boolean(p.auto_post_transaction),
+              next_month_allocation: Boolean(p.next_month_allocation),
+              last_posted_period: p.last_posted_period || undefined,
+            });
+          }
 
           if (catRes.data && catRes.data.length > 0) {
             setCategories(catRes.data);
@@ -610,6 +673,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             },
           };
         });
+      }
+
+      if (payload.type === "PAYROLL_SETTINGS_UPDATED") {
+        const { payrollSettings: incomingSettings, allocatedMonth, allocatedAmount } = payload;
+        if (incomingSettings) {
+          setPayrollSettings(incomingSettings);
+          try {
+            localStorage.setItem("ninetally_payroll_settings", JSON.stringify(incomingSettings));
+          } catch (e) {}
+        }
+        if (allocatedMonth && allocatedAmount) {
+          setPeriodsMap((prev) => {
+            const existing = prev[allocatedMonth] || {
+              period_month: allocatedMonth,
+              status: "PLANNING",
+              salary_budget: allocatedAmount,
+              additional_budget: 0,
+              real_bca_balance: 0,
+              real_jago_balance: 0,
+              items: [],
+            };
+            return {
+              ...prev,
+              [allocatedMonth]: {
+                ...existing,
+                salary_budget: allocatedAmount,
+              },
+            };
+          });
+        }
       }
 
       if (payload.type === "MASTER_DATA_CHANGED") {
@@ -1318,6 +1411,181 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  // 11. Payroll & Payday Engine Actions
+  const updatePayrollSettings = (newSettings: Partial<PayrollSettings>) => {
+    setPayrollSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      try {
+        localStorage.setItem("ninetally_payroll_settings", JSON.stringify(updated));
+      } catch (e) {
+        console.error("Failed to save payroll settings", e);
+      }
+
+      if (isSupabaseConfigured) {
+        supabase
+          .from("payroll_settings")
+          .upsert({
+            id: "default",
+            monthly_salary: updated.monthly_salary,
+            payday_day: updated.payday_day,
+            is_last_day: updated.is_last_day,
+            target_bank: updated.target_bank,
+            target_unit_id: updated.target_unit_id,
+            auto_post_transaction: updated.auto_post_transaction,
+            next_month_allocation: updated.next_month_allocation,
+            last_posted_period: updated.last_posted_period || null,
+            updated_at: new Date().toISOString(),
+          })
+          .then(({ error }) => {
+            if (error) console.warn("Supabase upsert payroll_settings error/skipped:", error.message);
+          });
+      }
+
+      broadcastSync({
+        type: "PAYROLL_SETTINGS_UPDATED",
+        payrollSettings: updated,
+      });
+
+      return updated;
+    });
+  };
+
+  const triggerPaydayExecution = (customMonthKey?: string) => {
+    const targetPeriod = customMonthKey || selectedMonth || getCurrentMonthKey();
+    const targetSalary = payrollSettings.monthly_salary;
+    const targetUnitId = payrollSettings.target_unit_id || "cf-inc-1";
+    const targetUnit = cashflowUnits.find((u) => u.id === targetUnitId) || cashflowUnits.find((u) => u.unit_type === "INCOME");
+    const actualUnitId = targetUnit ? targetUnit.id : targetUnitId;
+
+    // Check if payroll transaction already exists for targetPeriod
+    const existingTx = transactions.find(
+      (t) => t.period_id === targetPeriod && t.cashflow_unit_id === actualUnitId
+    );
+
+    let txAdded = false;
+    if (!existingTx) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      addTransaction({
+        period_id: targetPeriod,
+        cashflow_unit_id: actualUnitId,
+        amount: targetSalary,
+        date: todayStr,
+        notes: `Gaji Bulanan (${targetPeriod}) - Payday Engine`,
+      });
+      txAdded = true;
+    }
+
+    // Live on Last Month's Income: allocate salary to next month's salary_budget
+    let budgetAllocated = false;
+    const nextMonth = getNextMonthKey(targetPeriod);
+    if (payrollSettings.next_month_allocation) {
+      setPeriodsMap((prev) => {
+        const existingNext = prev[nextMonth] || {
+          period_month: nextMonth,
+          status: "PLANNING",
+          salary_budget: 0,
+          additional_budget: 0,
+          real_bca_balance: 0,
+          real_jago_balance: 0,
+          items: [],
+        };
+        return {
+          ...prev,
+          [nextMonth]: {
+            ...existingNext,
+            salary_budget: targetSalary,
+          },
+        };
+      });
+
+      if (isSupabaseConfigured) {
+        supabase
+          .from("budget_periods")
+          .upsert(
+            {
+              period_month: nextMonth,
+              salary_budget: targetSalary,
+            },
+            { onConflict: "period_month" }
+          )
+          .then(({ error }) => {
+            if (error) console.warn("Supabase upsert next month salary budget error:", error.message);
+          });
+      }
+      budgetAllocated = true;
+    }
+
+    // Update last_posted_period
+    const updatedSettings: PayrollSettings = {
+      ...payrollSettings,
+      last_posted_period: targetPeriod,
+    };
+    setPayrollSettings(updatedSettings);
+
+    try {
+      localStorage.setItem("ninetally_payroll_settings", JSON.stringify(updatedSettings));
+    } catch (e) {
+      console.error("Failed to save payroll settings", e);
+    }
+
+    if (isSupabaseConfigured) {
+      supabase
+        .from("payroll_settings")
+        .upsert({
+          id: "default",
+          monthly_salary: updatedSettings.monthly_salary,
+          payday_day: updatedSettings.payday_day,
+          is_last_day: updatedSettings.is_last_day,
+          target_bank: updatedSettings.target_bank,
+          target_unit_id: updatedSettings.target_unit_id,
+          auto_post_transaction: updatedSettings.auto_post_transaction,
+          next_month_allocation: updatedSettings.next_month_allocation,
+          last_posted_period: updatedSettings.last_posted_period,
+          updated_at: new Date().toISOString(),
+        })
+        .then(({ error }) => {
+          if (error) console.warn("Supabase upsert payroll_settings skipped/error:", error.message);
+        });
+    }
+
+    broadcastSync({
+      type: "PAYROLL_SETTINGS_UPDATED",
+      payrollSettings: updatedSettings,
+      allocatedMonth: payrollSettings.next_month_allocation ? nextMonth : undefined,
+      allocatedAmount: targetSalary,
+    });
+
+    const formatNominal = (val: number) => "Rp " + val.toLocaleString("id-ID");
+
+    return {
+      success: true,
+      message: txAdded 
+        ? `Gaji ${targetPeriod} (${formatNominal(targetSalary)}) berhasil dicatat ke ${payrollSettings.target_bank}${budgetAllocated ? ` & dialokasikan jadi budget ${nextMonth}!` : '!'}`
+        : `Gaji ${targetPeriod} sudah pernah dicatat di transaksi. Alokasi budget ${nextMonth} dipastikan tersinkronisasi (${formatNominal(targetSalary)}).`,
+      txAdded,
+      budgetAllocated,
+    };
+  };
+
+  // Auto-Payday Engine execution check
+  const hasCheckedPaydayRef = useRef(false);
+  useEffect(() => {
+    if (!isLoaded || hasCheckedPaydayRef.current) return;
+    if (!payrollSettings.auto_post_transaction) return;
+
+    const currentMonthKey = getCurrentMonthKey();
+    if (isPaydayReached(payrollSettings)) {
+      if (payrollSettings.last_posted_period !== currentMonthKey) {
+        hasCheckedPaydayRef.current = true;
+        const timer = setTimeout(() => {
+          console.log(`[NineTally Payday Engine] Hari gajian tiba (${currentMonthKey})! Mengeksekusi auto-payroll...`);
+          triggerPaydayExecution(currentMonthKey);
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isLoaded, payrollSettings]);
+
   // Master Data: Create Cashflow Unit
   const createCashflowUnit = (unit: Omit<CashflowUnit, "id" | "is_active">) => {
     const newUnit: CashflowUnit = {
@@ -1641,6 +1909,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateAsset,
         deleteAsset,
         toggleWishlistBought,
+        payrollSettings,
+        updatePayrollSettings,
+        triggerPaydayExecution,
       }}
     >
       {children}

@@ -29,7 +29,13 @@ import {
   AlertTriangle,
   X,
   Landmark,
-  Search
+  Search,
+  CalendarClock,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  Settings2,
+  SlidersHorizontal
 } from "lucide-react";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
@@ -50,6 +56,7 @@ export default function WebPage() {
     cashflowUnits, 
     categories,
     assets,
+    transactions,
     availableMonths,
     selectedMonth,
     setSelectedMonth,
@@ -74,10 +81,56 @@ export default function WebPage() {
     deleteCategory,
     createAsset,
     updateAsset,
-    deleteAsset
+    deleteAsset,
+    payrollSettings,
+    updatePayrollSettings,
+    triggerPaydayExecution,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<NavTab>("budget");
+
+  // Local state for Payroll Engine UI
+  const [isPayrollSettingsOpen, setIsPayrollSettingsOpen] = useState(false);
+  const [payrollSalaryInput, setPayrollSalaryInput] = useState<number>(payrollSettings.monthly_salary);
+  const [paydayDayInput, setPaydayDayInput] = useState<number>(payrollSettings.payday_day);
+  const [isLastDayInput, setIsLastDayInput] = useState<boolean>(payrollSettings.is_last_day);
+  const [payrollTargetBank, setPayrollTargetBank] = useState<"BCA" | "JAGO">(payrollSettings.target_bank);
+  const [payrollTargetUnitId, setPayrollTargetUnitId] = useState<string>(payrollSettings.target_unit_id);
+  const [payrollAutoPost, setPayrollAutoPost] = useState<boolean>(payrollSettings.auto_post_transaction);
+  const [payrollNextMonthAlloc, setPayrollNextMonthAlloc] = useState<boolean>(payrollSettings.next_month_allocation);
+  const [payrollToastMsg, setPayrollToastMsg] = useState<string | null>(null);
+
+  // Sync payroll inputs when context settings change
+  React.useEffect(() => {
+    setPayrollSalaryInput(payrollSettings.monthly_salary);
+    setPaydayDayInput(payrollSettings.payday_day);
+    setIsLastDayInput(payrollSettings.is_last_day);
+    setPayrollTargetBank(payrollSettings.target_bank);
+    setPayrollTargetUnitId(payrollSettings.target_unit_id);
+    setPayrollAutoPost(payrollSettings.auto_post_transaction);
+    setPayrollNextMonthAlloc(payrollSettings.next_month_allocation);
+  }, [payrollSettings]);
+
+  const handleSavePayrollSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    updatePayrollSettings({
+      monthly_salary: payrollSalaryInput,
+      payday_day: paydayDayInput,
+      is_last_day: isLastDayInput,
+      target_bank: payrollTargetBank,
+      target_unit_id: payrollTargetUnitId,
+      auto_post_transaction: payrollAutoPost,
+      next_month_allocation: payrollNextMonthAlloc,
+    });
+    setPayrollToastMsg("Pengaturan siklus gajian berhasil disimpan!");
+    setTimeout(() => setPayrollToastMsg(null), 3000);
+  };
+
+  const handleManualTriggerPayday = () => {
+    const res = triggerPaydayExecution(selectedMonth);
+    setPayrollToastMsg(res.message);
+    setTimeout(() => setPayrollToastMsg(null), 4500);
+  };
 
   // Form state for creating Master Category
   const [catName, setCatName] = useState("");
@@ -139,6 +192,13 @@ export default function WebPage() {
   const totalIncomeAvailable = salaryValue + additionalValue;
   const totalBudgetPlanned = budgetItems.reduce((acc, curr) => acc + curr.budget_amount, 0);
   const remainingToAllocate = totalIncomeAvailable - totalBudgetPlanned;
+
+  // Payday Engine: Check whether payday transaction has been logged for current selectedMonth
+  const targetIncomeUnit = cashflowUnits.find((u) => u.id === payrollSettings.target_unit_id) || cashflowUnits.find((u) => u.unit_type === "INCOME");
+  const incomeUnitId = targetIncomeUnit ? targetIncomeUnit.id : payrollSettings.target_unit_id;
+  const paydayTxInCurrentMonth = transactions.find(
+    (t) => t.period_id === selectedMonth && (t.cashflow_unit_id === incomeUnitId || (t.notes && t.notes.toLowerCase().includes("gaji")))
+  );
 
   // Handle explicit Save Budget
   const handleSaveBudget = () => {
@@ -666,6 +726,238 @@ export default function WebPage() {
                       {formatRupiah(remainingToAllocate)}
                     </span>
                   </div>
+                </div>
+
+                {/* Payday & Payroll Engine Section (Live on Last Month's Income) */}
+                <div className="pt-3 border-t border-[#EEEEEE]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-[#2196F3]/10 text-[#2196F3] flex items-center justify-center shrink-0">
+                        <CalendarClock className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-[#1E293B]">Siklus Gajian Otomatis</span>
+                          <span className="text-[10px] font-semibold text-[#2196F3] bg-[#E3F2FD] px-2 py-0.5 rounded-full border border-[#90CAF9]/40">
+                            Live on Last Month's Income
+                          </span>
+                          {/* Status Badge */}
+                          {paydayTxInCurrentMonth ? (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Gaji {selectedMonth} Tercatat (+{formatRupiah(paydayTxInCurrentMonth.amount)})
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 flex items-center gap-1">
+                              Jadwal: {payrollSettings.is_last_day ? "Akhir Bulan" : `Tgl ${payrollSettings.payday_day}`} ({formatRupiah(payrollSettings.monthly_salary)})
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#64748B] mt-0.5">
+                          {payrollSettings.next_month_allocation 
+                            ? `Gaji cair bulan ${selectedMonth} otomatis dialokasikan menjadi Anggaran Gaji bulan depan.`
+                            : `Pencatatan transaksi gaji otomatis saat tanggal gajian tiba.`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                      {/* Quick Execute Button */}
+                      <button
+                        type="button"
+                        onClick={handleManualTriggerPayday}
+                        title="Eksekusi pencatatan gaji sekarang & alokasikan ke bulan depan"
+                        className="px-3 py-1.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                      >
+                        <Zap className="w-3.5 h-3.5 fill-current" />
+                        <span>Eksekusi Gajian</span>
+                      </button>
+
+                      {/* Settings Toggle Button */}
+                      <button
+                        type="button"
+                        onClick={() => setIsPayrollSettingsOpen(!isPayrollSettingsOpen)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 border ${
+                          isPayrollSettingsOpen 
+                            ? "bg-[#2196F3] text-white border-[#2196F3]" 
+                            : "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
+                        }`}
+                      >
+                        <Settings2 className="w-3.5 h-3.5" />
+                        <span>Pengaturan</span>
+                        {isPayrollSettingsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Toast Feedback for Payroll */}
+                  {payrollToastMsg && (
+                    <div className="mt-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2 flex items-center gap-2 animate-in fade-in">
+                      <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{payrollToastMsg}</span>
+                    </div>
+                  )}
+
+                  {/* Expandable Settings Form */}
+                  {isPayrollSettingsOpen && (
+                    <form 
+                      onSubmit={handleSavePayrollSettings}
+                      className="mt-3 bg-white border border-[#CBD5E1] rounded-2xl p-4 shadow-sm space-y-4 animate-in slide-in-from-top-2 duration-200"
+                    >
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <SlidersHorizontal className="w-3.5 h-3.5 text-[#2196F3]" />
+                          Konfigurasi Payroll & Auto-Payday
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          Disimpan otomatis ke cloud & browser
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* 1. Nominal Gaji Pokok */}
+                        <div>
+                          <label className="text-[11px] text-slate-600 font-semibold block mb-1">
+                            Nominal Gaji Pokok
+                          </label>
+                          <CurrencyInput
+                            value={payrollSalaryInput}
+                            onChange={setPayrollSalaryInput}
+                            textAlign="left"
+                          />
+                        </div>
+
+                        {/* 2. Tanggal Gajian */}
+                        <div>
+                          <label className="text-[11px] text-slate-600 font-semibold block mb-1">
+                            Tanggal Gajian Rutin
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={isLastDayInput ? "last_day" : paydayDayInput.toString()}
+                              onChange={(e) => {
+                                if (e.target.value === "last_day") {
+                                  setIsLastDayInput(true);
+                                } else {
+                                  setIsLastDayInput(false);
+                                  setPaydayDayInput(parseInt(e.target.value, 10));
+                                }
+                              }}
+                              className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-[#2196F3]"
+                            >
+                              <option value="last_day">Akhir Bulan (Last Day - 28/30/31)</option>
+                              <option value="25">Tanggal 25</option>
+                              <option value="27">Tanggal 27</option>
+                              <option value="28">Tanggal 28</option>
+                              <option value="1">Tanggal 1</option>
+                              <option value="custom">Tanggal Tertentu...</option>
+                            </select>
+                            {!isLastDayInput && ![25, 27, 28, 1].includes(paydayDayInput) && (
+                              <input
+                                type="number"
+                                min={1}
+                                max={31}
+                                value={paydayDayInput}
+                                onChange={(e) => setPaydayDayInput(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
+                                className="w-16 text-xs text-center font-bold bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 text-slate-800"
+                                placeholder="Tgl"
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 3. Rekening Tujuan & Cashflow Unit */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] text-slate-600 font-semibold block mb-1">
+                              Rekening Masuk
+                            </label>
+                            <select
+                              value={payrollTargetBank}
+                              onChange={(e) => setPayrollTargetBank(e.target.value as "BCA" | "JAGO")}
+                              className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-800 focus:outline-none focus:border-[#2196F3]"
+                            >
+                              <option value="BCA">BCA Utama</option>
+                              <option value="JAGO">Bank Jago</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-slate-600 font-semibold block mb-1">
+                              CF Unit Income
+                            </label>
+                            <select
+                              value={payrollTargetUnitId}
+                              onChange={(e) => setPayrollTargetUnitId(e.target.value)}
+                              className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-800 focus:outline-none focus:border-[#2196F3]"
+                            >
+                              {cashflowUnits.filter(u => u.unit_type === "INCOME").length > 0 ? (
+                                cashflowUnits.filter(u => u.unit_type === "INCOME").map(u => (
+                                  <option key={u.id} value={u.id}>{u.name}</option>
+                                ))
+                              ) : (
+                                <option value="cf-inc-1">Gaji Kantor</option>
+                              )}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Toggles */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                        <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-slate-50">
+                          <input
+                            type="checkbox"
+                            checked={payrollNextMonthAlloc}
+                            onChange={(e) => setPayrollNextMonthAlloc(e.target.checked)}
+                            className="w-4 h-4 mt-0.5 rounded text-[#2196F3] border-slate-300 focus:ring-[#2196F3]"
+                          />
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 block">
+                              Alokasi ke Budget Bulan Depan
+                            </span>
+                            <span className="text-[11px] text-slate-500 block leading-tight">
+                              Gaji yang cair di bulan ini otomatis diisikan sebagai Anggaran Gaji bulan berikutnya.
+                            </span>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-slate-50">
+                          <input
+                            type="checkbox"
+                            checked={payrollAutoPost}
+                            onChange={(e) => setPayrollAutoPost(e.target.checked)}
+                            className="w-4 h-4 mt-0.5 rounded text-[#2196F3] border-slate-300 focus:ring-[#2196F3]"
+                          />
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 block">
+                              Auto-Catat Transaksi Saat Gajian
+                            </span>
+                            <span className="text-[11px] text-slate-500 block leading-tight">
+                              Begitu tanggal gajian tiba, sistem otomatis mencatat transaksi pemasukan dan menambah saldo rekening.
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setIsPayrollSettingsOpen(false)}
+                          className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800"
+                        >
+                          Tutup
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-1.5 text-xs font-bold rounded-xl bg-[#2196F3] hover:bg-[#1E88E5] text-white shadow-xs flex items-center gap-1.5"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Simpan Pengaturan Siklus</span>
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               </div>
 

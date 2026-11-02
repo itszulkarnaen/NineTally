@@ -87,3 +87,15 @@ export interface WishlistItem {
   bought_at?: string;
 }
 
+export interface PayrollSettings {
+  monthly_salary: number;
+  payday_day: number; // 1 to 31
+  is_last_day: boolean; // true if end of month
+  target_unit_id: string; // CashflowUnit id (e.g. 'cf-inc-1' Gaji Kantor)
+  target_bank: 'BCA' | 'JAGO';
+  auto_post_transaction: boolean;
+  next_month_allocation: boolean; // Gaji bulan N jadi budget bulan N+1
+  last_posted_period?: string; // e.g. '2026-11'
+}
+
+
