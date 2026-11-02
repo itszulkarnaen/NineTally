@@ -767,9 +767,9 @@ export default function WebPage() {
                         type="button"
                         onClick={handleManualTriggerPayday}
                         title="Eksekusi pencatatan gaji sekarang & alokasikan ke bulan depan"
-                        className="px-3 py-1.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                        className="px-3 py-1.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-[#2196F3] text-[#2196F3] bg-white hover:bg-[#2196F3]/10 shadow-xs"
                       >
-                        <Zap className="w-3.5 h-3.5 fill-current" />
+                        <Zap className="w-3.5 h-3.5 text-[#2196F3]" />
                         <span>Eksekusi Gajian</span>
                       </button>
 

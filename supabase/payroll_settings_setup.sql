@@ -22,3 +22,4 @@ ON public.payroll_settings FOR ALL TO public USING (true) WITH CHECK (true);
 INSERT INTO public.payroll_settings (id, monthly_salary, payday_day, is_last_day, target_bank, auto_post_transaction, next_month_allocation)
 VALUES ('default', 10000000, 25, true, 'BCA', true, true)
 ON CONFLICT (id) DO NOTHING;
+
