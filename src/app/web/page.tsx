@@ -28,7 +28,8 @@ import {
   Pencil,
   AlertTriangle,
   X,
-  Landmark
+  Landmark,
+  Search
 } from "lucide-react";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
@@ -95,6 +96,9 @@ export default function WebPage() {
   const [bcaBalanceInput, setBcaBalanceInput] = useState<number>(currentMonthData.real_bca_balance || 0);
   const [jagoBalanceInput, setJagoBalanceInput] = useState<number>(currentMonthData.real_jago_balance || 0);
   const [isBankSavedSuccess, setIsBankSavedSuccess] = useState(false);
+
+  // Search filter for Realization table
+  const [realizationSearch, setRealizationSearch] = useState("");
 
   React.useEffect(() => {
     setBcaBalanceInput(currentMonthData.real_bca_balance || 0);
@@ -534,7 +538,7 @@ export default function WebPage() {
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-bold text-[#242921]">
                   {activeTab === "budget" && "Budget"}
-                  {activeTab === "realization" && "Realization (Realisasi Berjalan)"}
+                  {activeTab === "realization" && "Realization"}
                   {activeTab === "actual" && "Actual"}
                   {activeTab === "bank-balance" && "Bank Balance & Historical Saldo"}
                   {activeTab === "cashflow-items" && "Master Data: Cashflow Items"}
@@ -877,6 +881,83 @@ export default function WebPage() {
             const progressPct = budgetItems.length > 0 ? Math.round((realizedCount / budgetItems.length) * 100) : 0;
             const sisaKasAnggaran = (salaryValue + additionalValue) - totalRealization;
 
+            // Finance Status Helper (Professional Terminology)
+            const getFinanceStatus = (item: typeof budgetItems[0]) => {
+              const spent = item.realization_amount ?? item.projection_amount ?? 0;
+              const budget = item.budget_amount;
+
+              // 1. Overbudget (Realisasi melebihi budget)
+              if ((budget > 0 && spent > budget) || (budget === 0 && spent > 0)) {
+                return {
+                  label: "Overbudget",
+                  badgeClass: "bg-rose-50 text-rose-700 border-rose-200",
+                  icon: AlertTriangle,
+                };
+              }
+
+              // 2. Settled (Lunas / Terbayar penuh sesuai budget)
+              if (item.is_realized || (budget > 0 && spent >= budget)) {
+                return {
+                  label: "Settled",
+                  badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                  icon: Check,
+                };
+              }
+
+              // 3. Partially Paid (Dibayar sebagian)
+              if (spent > 0 && spent < budget) {
+                return {
+                  label: "Partially Paid",
+                  badgeClass: "bg-sky-50 text-sky-700 border-sky-200",
+                  icon: null,
+                };
+              }
+
+              // 4. Outstanding (Belum dibayar)
+              return {
+                label: "Outstanding",
+                badgeClass: "bg-slate-100 text-slate-600 border-slate-200",
+                icon: null,
+              };
+            };
+
+            // Urgency ranking: HIGHEST -> HIGH -> NORMAL
+            const urgencyRank: Record<string, number> = {
+              HIGHEST: 1,
+              HIGH: 2,
+              NORMAL: 3,
+            };
+
+            // 1. Sort by urgency descending
+            const sortedItems = [...budgetItems].sort((a, b) => {
+              const rankA = a.urgency ? (urgencyRank[a.urgency] ?? 99) : 99;
+              const rankB = b.urgency ? (urgencyRank[b.urgency] ?? 99) : 99;
+              if (rankA !== rankB) {
+                return rankA - rankB;
+              }
+              if ((a.sort_order ?? 0) !== (b.sort_order ?? 0)) {
+                return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+              }
+              const unitA = cashflowUnits.find((u) => u.id === a.cashflow_unit_id)?.name || "";
+              const unitB = cashflowUnits.find((u) => u.id === b.cashflow_unit_id)?.name || "";
+              return unitA.localeCompare(unitB);
+            });
+
+            // 2. Filter by search query
+            const filteredItems = sortedItems.filter((item) => {
+              if (!realizationSearch.trim()) return true;
+              const q = realizationSearch.toLowerCase().trim();
+              const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+              const status = getFinanceStatus(item);
+              return (
+                unit?.name.toLowerCase().includes(q) ||
+                unit?.code.toLowerCase().includes(q) ||
+                unit?.category?.toLowerCase().includes(q) ||
+                item.urgency.toLowerCase().includes(q) ||
+                status.label.toLowerCase().includes(q)
+              );
+            });
+
             return (
               <div className="space-y-5">
                 {/* Realization Summary Metrics Cards */}
@@ -890,7 +971,7 @@ export default function WebPage() {
 
                   {/* Metric 2: Realization Running */}
                   <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-5 shadow-xs flex flex-col justify-between">
-                    <span className="text-[11px] text-[#666E61] font-semibold block">Total Realisasi Berjalan</span>
+                    <span className="text-[11px] text-[#666E61] font-semibold block">Total Realisasi</span>
                     <span className="text-lg font-bold text-[#2196F3] mt-2">{formatRupiah(totalRealization)}</span>
                     <div className="mt-1 flex items-center gap-1.5 text-[10px]">
                       <span className="font-semibold text-[#666E61]">Variansi:</span>
@@ -937,14 +1018,30 @@ export default function WebPage() {
                         Daftar Realisasi Cashflow Items ({budgetItems.length} Item)
                       </h3>
                       <p className="text-xs text-[#666E61] mt-0.5">
-                        Update nominal riil jika ada perubahan harga/tagihan. Klik status untuk menandai item terbayar.
+                        Status realisasi pengeluaran berbasis transaksi. Klik status untuk mengubah status item.
                       </p>
                     </div>
 
+                    {/* Search Bar on Table */}
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#666E61] bg-[#E3F2FD]/40 px-3 py-1 rounded-xl border border-[#EEEEEE]">
-                        Sinkron real-time dengan Mobile PWA
-                      </span>
+                      <div className="relative w-full sm:w-64">
+                        <Search className="w-3.5 h-3.5 text-[#666E61] absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="Cari item, kategori, status..."
+                          value={realizationSearch}
+                          onChange={(e) => setRealizationSearch(e.target.value)}
+                          className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl pl-8 pr-7 py-1.5 text-xs text-[#242921] placeholder:text-[#666E61]/60 focus:outline-none focus:border-[#2196F3]"
+                        />
+                        {realizationSearch && (
+                          <button
+                            onClick={() => setRealizationSearch("")}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[#666E61] hover:text-[#242921] p-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -952,91 +1049,83 @@ export default function WebPage() {
                     <div className="p-12 text-center text-xs text-[#666E61]">
                       Belum ada cashflow item yang dibuat di bulan {selectedMonth}. Susun item di menu <strong>Budget</strong> terlebih dahulu.
                     </div>
+                  ) : filteredItems.length === 0 ? (
+                    <div className="p-10 text-center space-y-2">
+                      <p className="text-xs font-bold text-[#242921]">Item Tidak Ditemukan</p>
+                      <p className="text-xs text-[#666E61]">
+                        Tidak ada item yang cocok dengan kata kunci &ldquo;{realizationSearch}&rdquo;.
+                      </p>
+                      <button
+                        onClick={() => setRealizationSearch("")}
+                        className="text-xs font-bold text-[#2196F3] underline"
+                      >
+                        Reset Pencarian
+                      </button>
+                    </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead>
                           <tr className="border-b border-[#EEEEEE] text-[#666E61]">
-                            <th className="py-2.5 px-3">Nama Cashflow Item</th>
-                            <th className="py-2.5 px-3">Kategori</th>
-                            <th className="py-2.5 px-3">Urgency</th>
-                            <th className="py-2.5 px-3">Budget Plan</th>
-                            <th className="py-2.5 px-3 w-40">Realisasi Berjalan</th>
-                            <th className="py-2.5 px-3 text-center">Status</th>
-                            <th className="py-2.5 px-3 text-right">Selisih</th>
+                            <th className="py-2 px-3">Nama Cashflow Item</th>
+                            <th className="py-2 px-3">Kategori</th>
+                            <th className="py-2 px-3">Urgency</th>
+                            <th className="py-2 px-3">Budget Plan</th>
+                            <th className="py-2 px-3 text-center">Status</th>
+                            <th className="py-2 px-3 text-right">Selisih</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#EEEEEE] text-[#242921]">
-                          {budgetItems.map((item) => {
+                          {filteredItems.map((item) => {
                             const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
                             const currentRealization = item.realization_amount ?? item.projection_amount ?? 0;
                             const diff = currentRealization - item.budget_amount;
+                            const statusInfo = getFinanceStatus(item);
 
                             return (
                               <tr key={item.id} className="hover:bg-[#E3F2FD]/20 transition">
-                                <td className="py-3 px-3">
-                                  <div className="font-semibold text-xs text-[#242921]">{unit?.name}</div>
-                                  <div className="text-[10px] text-[#666E61]">{unit?.code}</div>
+                                <td className="py-2 px-3">
+                                  <span className="font-semibold text-xs text-[#242921] whitespace-nowrap">
+                                    {unit?.name || "Cashflow Item"}
+                                  </span>
                                 </td>
-                                <td className="py-3 px-3">
-                                  <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#E3F2FD] text-[#666E61] font-semibold">
+                                <td className="py-2 px-3">
+                                  <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#E3F2FD] text-[#666E61] font-semibold whitespace-nowrap">
                                     {unit?.category || unit?.unit_type}
                                   </span>
                                 </td>
-                                <td className="py-3 px-3">
-                                  <span className={`text-[10px] font-bold ${
+                                <td className="py-2 px-3">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${
                                     item.urgency === "HIGHEST"
-                                      ? "text-rose-600"
+                                      ? "text-rose-600 bg-rose-50"
                                       : item.urgency === "HIGH"
-                                      ? "text-amber-700"
-                                      : "text-[#666E61]"
+                                      ? "text-amber-700 bg-amber-50"
+                                      : "text-[#666E61] bg-slate-100"
                                   }`}>
                                     {item.urgency}
                                   </span>
                                 </td>
-                                <td className="py-3 px-3 font-medium text-[#242921]">
+                                <td className="py-2 px-3 font-medium text-[#242921] whitespace-nowrap">
                                   {formatRupiah(item.budget_amount)}
                                 </td>
-                                <td className="py-3 px-3">
-                                  <CurrencyInput
-                                    value={currentRealization}
-                                    disabled={isLocked}
-                                    onChange={(val) => updateItemRealization(item.id, val)}
-                                    textAlign="right"
-                                  />
-                                </td>
-                                <td className="py-3 px-3 text-center">
+                                <td className="py-2 px-3 text-center">
                                   <button
                                     onClick={() => toggleItemRealized(item.id)}
                                     disabled={isLocked}
-                                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition flex items-center justify-center gap-1 mx-auto ${
-                                      item.is_realized
-                                        ? "bg-[#2196F3]/15 text-[#2196F3] hover:bg-[#2196F3]/25 border border-[#2196F3]/30"
-                                        : "bg-[#EEEEEE] text-[#666E61] hover:bg-slate-200 border border-slate-300"
-                                    }`}
-                                    title="Klik untuk ubah status pembayaran"
+                                    className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border transition flex items-center justify-center gap-1 mx-auto whitespace-nowrap active:scale-95 ${statusInfo.badgeClass}`}
+                                    title="Klik untuk ubah status realisasi"
                                   >
-                                    {item.is_realized ? (
-                                      <>
-                                        <Check className="w-3 h-3 text-[#2196F3]" />
-                                        <span>Terbayar</span>
-                                      </>
-                                    ) : (
-                                      <span>Pending</span>
-                                    )}
+                                    {statusInfo.icon && <statusInfo.icon className="w-3 h-3 shrink-0" />}
+                                    <span>{statusInfo.label}</span>
                                   </button>
                                 </td>
-                                <td className="py-3 px-3 text-right">
-                                  {diff === 0 ? (
-                                    <span className="text-[#666E61] font-medium text-[11px]">Sesuai</span>
-                                  ) : diff > 0 ? (
-                                    <span className="text-rose-600 font-bold text-[11px]">
+                                <td className="py-2 px-3 text-right whitespace-nowrap">
+                                  {diff > 0 ? (
+                                    <span className="text-rose-600 font-bold text-xs">
                                       +{formatRupiah(diff)}
                                     </span>
                                   ) : (
-                                    <span className="text-[#2196F3] font-bold text-[11px]">
-                                      {formatRupiah(diff)}
-                                    </span>
+                                    <span className="text-[#666E61] text-xs font-medium">-</span>
                                   )}
                                 </td>
                               </tr>
