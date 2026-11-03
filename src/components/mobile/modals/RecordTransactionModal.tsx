@@ -10,6 +10,7 @@ import {
   Search,
   Sparkles,
   Check,
+  CheckCircle2,
 } from "lucide-react";
 import { BudgetPeriodItem, CashflowUnit } from "@/types";
 
@@ -21,13 +22,16 @@ interface RecordTransactionModalProps {
   preselectedUnitId?: string;
   defaultType?: "EXPENSE" | "INCOME";
   selectedMonth: string;
-  onSaveTransaction: (data: {
-    period_id: string;
-    cashflow_unit_id: string;
-    amount: number;
-    date: string;
-    notes?: string;
-  }) => void;
+  onSaveTransaction: (
+    data: {
+      period_id: string;
+      cashflow_unit_id: string;
+      amount: number;
+      date: string;
+      notes?: string;
+    },
+    options?: { markSettled?: boolean }
+  ) => void;
 }
 
 export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
@@ -46,6 +50,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
   const [txUnitSearch, setTxUnitSearch] = useState<string>("");
   const [txNotes, setTxNotes] = useState<string>("");
   const [txDate, setTxDate] = useState<string>("");
+  const [isSettled, setIsSettled] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -54,6 +59,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
     setTxNominal(0);
     setTxNotes("");
     setTxUnitSearch("");
+    setIsSettled(false);
     setTxDate(new Date().toISOString().slice(0, 10));
 
     if (defaultType === "EXPENSE") {
@@ -106,6 +112,17 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
     return budgetItems.find((i) => i.cashflow_unit_id === txUnitId);
   }, [budgetItems, txUnitId]);
 
+  const spentSoFar = useMemo(() => {
+    return selectedBudgetItem
+      ? (selectedBudgetItem.realization_amount ?? selectedBudgetItem.projection_amount ?? 0)
+      : 0;
+  }, [selectedBudgetItem]);
+
+  const budgetAmount = selectedBudgetItem?.budget_amount || 0;
+  const projectedTotal = spentSoFar + txNominal;
+  const isAutoSettled = budgetAmount > 0 && projectedTotal >= budgetAmount;
+  const variance = budgetAmount - projectedTotal;
+
   // Search filter for modal Income Unit selection
   const filteredModalIncomeUnits = useMemo(() => {
     const incUnits = cashflowUnits.filter((u) => u.unit_type === "INCOME" && u.is_active);
@@ -124,13 +141,16 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
     e.preventDefault();
     if (txNominal <= 0 || !txUnitId) return;
 
-    onSaveTransaction({
-      period_id: selectedMonth,
-      cashflow_unit_id: txUnitId,
-      amount: txNominal,
-      date: txDate,
-      notes: txNotes.trim() || undefined,
-    });
+    onSaveTransaction(
+      {
+        period_id: selectedMonth,
+        cashflow_unit_id: txUnitId,
+        amount: txNominal,
+        date: txDate,
+        notes: txNotes.trim() || undefined,
+      },
+      txType === "EXPENSE" ? { markSettled: isSettled } : undefined
+    );
   };
 
   if (!isOpen) return null;
@@ -447,6 +467,55 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
               required
             />
           </div>
+
+          {/* Field 5: Switch Tandai Selesai (Hanya untuk Expense) */}
+          {txType === "EXPENSE" && selectedBudgetItem && selectedBudgetItem.budget_amount > 0 && (
+            <div className="bg-[#F8FAFC] border border-[#EEEEEE] rounded-2xl p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
+                      isAutoSettled || isSettled
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-[#242921]">
+                      Tandai CF Unit Selesai
+                    </h4>
+                    <p className="text-[10px] text-[#666E61] truncate">
+                      {isAutoSettled
+                        ? "Plafon tercapai (Otomatis selesai)"
+                        : isSettled
+                        ? variance > 0
+                          ? `Selesai & hemat ${formatRupiah(variance)}`
+                          : "Ditandai selesai untuk bulan ini"
+                        : "Aktifkan jika pengeluaran pos ini sudah final"}
+                    </p>
+                  </div>
+                </div>
+
+                {isAutoSettled ? (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
+                    Auto Lunas
+                  </span>
+                ) : (
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={isSettled}
+                      onChange={(e) => setIsSettled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-10 h-5.5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Submit Button */}
           <button

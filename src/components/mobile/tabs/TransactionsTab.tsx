@@ -236,8 +236,13 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
                     >
                       {/* 1. Nama */}
                       <div className="min-w-0 flex-1">
-                        <span className="font-bold text-xs text-[#242921] truncate block">
-                          {unit?.name || "Cashflow Unit"}
+                        <span className="font-bold text-xs text-[#242921] truncate flex items-center gap-1.5">
+                          <span>{unit?.name || "Cashflow Unit"}</span>
+                          {item.is_realized && !isOver && (
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                              ✓ Selesai
+                            </span>
+                          )}
                         </span>
                       </div>
 
@@ -246,14 +251,22 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
                         <div className="flex-1 bg-[#EEEEEE] h-2 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-300 ${
-                              isOver ? "bg-rose-500" : "bg-[#2196F3]"
+                              isOver
+                                ? "bg-rose-500"
+                                : item.is_realized
+                                ? "bg-emerald-500"
+                                : "bg-[#2196F3]"
                             }`}
                             style={{ width: `${Math.min(100, pct)}%` }}
                           />
                         </div>
                         <span
                           className={`text-[10px] font-bold w-7 text-right shrink-0 ${
-                            isOver ? "text-rose-600" : "text-[#666E61]"
+                            isOver
+                              ? "text-rose-600"
+                              : item.is_realized
+                              ? "text-emerald-600"
+                              : "text-[#666E61]"
                           }`}
                         >
                           {pct}%
@@ -293,6 +306,10 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
                             ) : spent >= budget && budget > 0 ? (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30">
                                 100% Tercapai
+                              </span>
+                            ) : item.is_realized ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                Selesai (Hemat {formatRupiah(budget - spent)})
                               </span>
                             ) : (
                               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E3F2FD] text-[#666E61]">

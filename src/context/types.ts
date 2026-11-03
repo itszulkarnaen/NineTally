@@ -73,7 +73,10 @@ export interface AppContextType {
   updateItemRealization: (itemId: string, newRealization: number) => void;
   /** @deprecated backward compat alias */
   updateItemProjection: (itemId: string, newProjection: number) => void;
-  addTransaction: (tx: Omit<CashflowTransaction, "id" | "created_at">) => void;
+  addTransaction: (
+    tx: Omit<CashflowTransaction, "id" | "created_at">,
+    options?: { markSettled?: boolean }
+  ) => void;
   deleteTransaction: (txId: string) => void;
 
   // Actions: Master Data

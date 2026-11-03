@@ -29,7 +29,10 @@ export function useTransactions({
 }: UseTransactionsOptions) {
   const [transactions, setTransactions] = useState<CashflowTransaction[]>(initialTransactions);
 
-  const addTransaction = (tx: Omit<CashflowTransaction, "id" | "created_at">) => {
+  const addTransaction = (
+    tx: Omit<CashflowTransaction, "id" | "created_at">,
+    options?: { markSettled?: boolean }
+  ) => {
     if (isCurrentMonthLocked) return;
 
     const newTx: CashflowTransaction = {
@@ -72,10 +75,14 @@ export function useTransactions({
     const newBcaBalance = currentBca + delta;
 
     const targetBudgetItem = currentPeriod.items.find((i) => i.cashflow_unit_id === tx.cashflow_unit_id);
+    const wasAlreadyRealized = targetBudgetItem?.is_realized ?? false;
     const isTargetItemRealized =
-      targetBudgetItem && targetBudgetItem.budget_amount > 0
-        ? unitTotal >= targetBudgetItem.budget_amount
-        : unitTotal > 0;
+      options?.markSettled !== undefined
+        ? options.markSettled
+        : wasAlreadyRealized ||
+          (targetBudgetItem && targetBudgetItem.budget_amount > 0
+            ? unitTotal >= targetBudgetItem.budget_amount
+            : unitTotal > 0);
 
     setPeriodsMap((prev) => {
       const current = prev[tx.period_id] || currentMonthData;
@@ -91,7 +98,7 @@ export function useTransactions({
                   realization_amount: unitTotal,
                   projection_amount: unitTotal,
                   actual_amount: unitTotal,
-                  is_realized: i.budget_amount > 0 ? unitTotal >= i.budget_amount : unitTotal > 0,
+                  is_realized: isTargetItemRealized,
                 }
               : i
           ),
@@ -147,6 +154,7 @@ export function useTransactions({
       unitTotal,
       newBcaBalance,
       linkedAssetUpdate,
+      isTargetItemRealized,
     });
   };
 

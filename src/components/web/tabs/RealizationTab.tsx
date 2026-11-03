@@ -41,21 +41,22 @@ export const RealizationTab: React.FC = () => {
       };
     }
 
-    // 2. Partially Paid (Realisasi berjalan tapi belum mencapai 100% budget)
+    // 2. Settled (Lunas / Terbayar 100% sesuai budget atau ditandai manual/selesai)
+    if ((budget > 0 && spent >= budget) || item.is_realized) {
+      const isUnderbudget = budget > 0 && spent < budget;
+      return {
+        label: isUnderbudget ? "Settled (Hemat)" : "Settled",
+        badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        icon: Check,
+      };
+    }
+
+    // 3. Partially Paid (Realisasi berjalan tapi belum mencapai 100% budget & belum selesai)
     if (budget > 0 && spent > 0 && spent < budget) {
       return {
         label: "Partially Paid",
         badgeClass: "bg-sky-50 text-sky-700 border-sky-200",
         icon: null,
-      };
-    }
-
-    // 3. Settled (Lunas / Terbayar 100% sesuai budget atau ditandai manual)
-    if ((budget > 0 && spent >= budget) || item.is_realized) {
-      return {
-        label: "Settled",
-        badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        icon: Check,
       };
     }
 
@@ -283,6 +284,10 @@ export const RealizationTab: React.FC = () => {
                         {diff > 0 ? (
                           <span className="text-rose-600 font-bold text-xs">
                             +{formatRupiah(diff)}
+                          </span>
+                        ) : diff < 0 && (currentRealization > 0 || item.is_realized) ? (
+                          <span className="text-emerald-600 font-semibold text-xs" title="Hemat / Sisa Budget">
+                            -{formatRupiah(Math.abs(diff))}
                           </span>
                         ) : (
                           <span className="text-[#666E61] text-xs font-medium">-</span>

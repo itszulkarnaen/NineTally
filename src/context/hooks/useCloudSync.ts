@@ -380,7 +380,7 @@ export function useCloudSync({
       if (!payload || !payload.type) return;
 
       if (payload.type === "TX_ADDED") {
-        const { newTx, unitTotal, newBcaBalance, linkedAssetUpdate } = payload;
+        const { newTx, unitTotal, newBcaBalance, linkedAssetUpdate, isTargetItemRealized } = payload;
         setTransactions((prev) => {
           if (prev.some((t) => t.id === newTx.id)) return prev;
           return [newTx, ...prev];
@@ -401,7 +401,12 @@ export function useCloudSync({
                       realization_amount: unitTotal,
                       projection_amount: unitTotal,
                       actual_amount: unitTotal,
-                      is_realized: true,
+                      is_realized:
+                        isTargetItemRealized !== undefined
+                          ? isTargetItemRealized
+                          : i.budget_amount > 0
+                          ? unitTotal >= i.budget_amount
+                          : true,
                     }
                   : i
               ),

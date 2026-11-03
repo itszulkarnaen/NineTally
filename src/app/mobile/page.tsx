@@ -173,16 +173,23 @@ export default function MobilePage() {
     setIsTxModalOpen(true);
   };
 
-  const handleSaveTransaction = (data: {
-    period_id: string;
-    cashflow_unit_id: string;
-    amount: number;
-    date: string;
-    notes?: string;
-  }) => {
-    addTransaction(data);
+  const handleSaveTransaction = (
+    data: {
+      period_id: string;
+      cashflow_unit_id: string;
+      amount: number;
+      date: string;
+      notes?: string;
+    },
+    options?: { markSettled?: boolean }
+  ) => {
+    addTransaction(data, options);
     setIsTxModalOpen(false);
-    setToastMessage("Transaksi berhasil dicatat!");
+    setToastMessage(
+      options?.markSettled
+        ? "Transaksi dicatat & pos ditandai selesai!"
+        : "Transaksi berhasil dicatat!"
+    );
     setIsSuccessToast(true);
     setTimeout(() => setIsSuccessToast(false), 2500);
   };
