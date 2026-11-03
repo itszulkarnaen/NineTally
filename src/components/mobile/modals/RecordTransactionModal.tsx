@@ -12,7 +12,7 @@ import {
   Check,
   CheckCircle2,
 } from "lucide-react";
-import { BudgetPeriodItem, CashflowUnit } from "@/types";
+import { BudgetPeriodItem, CashflowUnit, CashflowTransaction } from "@/types";
 
 interface RecordTransactionModalProps {
   isOpen: boolean;
@@ -22,6 +22,7 @@ interface RecordTransactionModalProps {
   preselectedUnitId?: string;
   defaultType?: "EXPENSE" | "INCOME";
   selectedMonth: string;
+  editingTransaction?: CashflowTransaction | null;
   onSaveTransaction: (
     data: {
       period_id: string;
@@ -30,7 +31,8 @@ interface RecordTransactionModalProps {
       date: string;
       notes?: string;
     },
-    options?: { markSettled?: boolean }
+    options?: { markSettled?: boolean },
+    editingTxId?: string
   ) => void;
 }
 
@@ -42,6 +44,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
   preselectedUnitId,
   defaultType = "EXPENSE",
   selectedMonth,
+  editingTransaction,
   onSaveTransaction,
 }) => {
   const [txType, setTxType] = useState<"EXPENSE" | "INCOME">(defaultType);
@@ -54,6 +57,21 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    if (editingTransaction) {
+      const unit = cashflowUnits.find((u) => u.id === editingTransaction.cashflow_unit_id);
+      const isInc = unit?.unit_type === "INCOME";
+      setTxType(isInc ? "INCOME" : "EXPENSE");
+      setTxNominal(editingTransaction.amount);
+      setTxUnitId(editingTransaction.cashflow_unit_id);
+      setTxNotes(editingTransaction.notes || "");
+      setTxUnitSearch("");
+      setTxDate(editingTransaction.date);
+
+      const targetBudgetItem = budgetItems.find((i) => i.cashflow_unit_id === editingTransaction.cashflow_unit_id);
+      setIsSettled(Boolean(targetBudgetItem?.is_realized));
+      return;
+    }
 
     setTxType(defaultType);
     setTxNominal(0);
@@ -80,7 +98,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
         setTxUnitId(incUnits[0].id);
       }
     }
-  }, [isOpen, defaultType, preselectedUnitId, budgetItems, cashflowUnits]);
+  }, [isOpen, defaultType, preselectedUnitId, budgetItems, cashflowUnits, editingTransaction]);
 
   // Search filter for modal Cashflow Unit selection (Expenses)
   const filteredModalBudgetItems = useMemo(() => {
@@ -91,8 +109,8 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
       const spent = item.realization_amount ?? item.projection_amount ?? 0;
       const isHundredPercent = (item.budget_amount > 0 && spent >= item.budget_amount) || item.is_realized;
 
-      // 1. If NOT searching: hide items that have reached 100% budget!
-      if (!isSearching && isHundredPercent) {
+      // 1. If NOT searching: hide items that have reached 100% budget, unless it's currently being edited!
+      if (!isSearching && isHundredPercent && item.cashflow_unit_id !== editingTransaction?.cashflow_unit_id) {
         return false;
       }
 
@@ -106,17 +124,20 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
         unit?.code.toLowerCase().includes(q)
       );
     });
-  }, [budgetItems, cashflowUnits, txUnitSearch]);
+  }, [budgetItems, cashflowUnits, txUnitSearch, editingTransaction]);
 
   const selectedBudgetItem = useMemo(() => {
     return budgetItems.find((i) => i.cashflow_unit_id === txUnitId);
   }, [budgetItems, txUnitId]);
 
   const spentSoFar = useMemo(() => {
-    return selectedBudgetItem
-      ? (selectedBudgetItem.realization_amount ?? selectedBudgetItem.projection_amount ?? 0)
-      : 0;
-  }, [selectedBudgetItem]);
+    if (!selectedBudgetItem) return 0;
+    const rawSpent = selectedBudgetItem.realization_amount ?? selectedBudgetItem.projection_amount ?? 0;
+    if (editingTransaction && editingTransaction.cashflow_unit_id === selectedBudgetItem.cashflow_unit_id) {
+      return Math.max(0, rawSpent - editingTransaction.amount);
+    }
+    return rawSpent;
+  }, [selectedBudgetItem, editingTransaction]);
 
   const budgetAmount = selectedBudgetItem?.budget_amount || 0;
   const projectedTotal = spentSoFar + txNominal;
@@ -149,7 +170,8 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
         date: txDate,
         notes: txNotes.trim() || undefined,
       },
-      txType === "EXPENSE" ? { markSettled: isSettled } : undefined
+      txType === "EXPENSE" ? { markSettled: isSettled } : undefined,
+      editingTransaction?.id
     );
   };
 
@@ -162,10 +184,16 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-[#EEEEEE]">
           <div>
             <h3 className="text-sm font-bold text-[#242921]">
-              {txType === "EXPENSE" ? "Catat Pengeluaran Baru" : "Catat Pemasukan Baru"}
+              {editingTransaction
+                ? "Edit Transaksi"
+                : txType === "EXPENSE"
+                ? "Catat Pengeluaran Baru"
+                : "Catat Pemasukan Baru"}
             </h3>
             <p className="text-[11px] text-[#666E61]">
-              {txType === "EXPENSE"
+              {editingTransaction
+                ? "Perbarui nominal, tanggal, pos, atau keterangan transaksi"
+                : txType === "EXPENSE"
                 ? "Input mutasi transaksi ke dalam pos anggaran"
                 : "Input pemasukan uang ke dalam rekening"}
             </p>
@@ -531,7 +559,11 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
           >
             <Check className="w-4 h-4 stroke-[3]" />
             <span>
-              {txType === "INCOME" ? "Simpan Pemasukan" : "Simpan Pengeluaran"}{" "}
+              {editingTransaction
+                ? "Simpan Perubahan"
+                : txType === "INCOME"
+                ? "Simpan Pemasukan"
+                : "Simpan Pengeluaran"}{" "}
               {txNominal > 0 ? `(${formatRupiah(txNominal)})` : ""}
             </span>
           </button>

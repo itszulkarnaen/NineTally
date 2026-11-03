@@ -77,6 +77,11 @@ export interface AppContextType {
     tx: Omit<CashflowTransaction, "id" | "created_at">,
     options?: { markSettled?: boolean }
   ) => void;
+  updateTransaction: (
+    txId: string,
+    data: Partial<Omit<CashflowTransaction, "id" | "created_at">>,
+    options?: { markSettled?: boolean }
+  ) => void;
   deleteTransaction: (txId: string) => void;
 
   // Actions: Master Data

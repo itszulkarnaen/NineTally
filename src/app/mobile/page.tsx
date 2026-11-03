@@ -5,6 +5,7 @@ import { useApp } from "@/context/AppContext";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { formatRupiah } from "@/lib/utils";
 import { Lock, Plus, Check } from "lucide-react";
+import { CashflowTransaction } from "@/types";
 
 import { MobileTab } from "@/components/mobile/types";
 import { MobileTopBar } from "@/components/mobile/MobileTopBar";
@@ -29,6 +30,7 @@ export default function MobilePage() {
     setSelectedMonth,
     updateBankBalance,
     addTransaction,
+    updateTransaction,
     deleteTransaction,
     toggleWishlistBought,
   } = useApp();
@@ -40,6 +42,7 @@ export default function MobilePage() {
 
   // Modals state
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<CashflowTransaction | null>(null);
   const [txModalPreselectedUnitId, setTxModalPreselectedUnitId] = useState<string | undefined>();
   const [txModalDefaultType, setTxModalDefaultType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
@@ -168,8 +171,16 @@ export default function MobilePage() {
 
   const openTxModal = (preselectedUnitId?: string, defaultType: "EXPENSE" | "INCOME" = "EXPENSE") => {
     if (isLocked) return;
+    setEditingTx(null);
     setTxModalPreselectedUnitId(preselectedUnitId);
     setTxModalDefaultType(defaultType);
+    setIsTxModalOpen(true);
+  };
+
+  const handleEditTransaction = (tx: CashflowTransaction) => {
+    if (isLocked) return;
+    setEditingTx(tx);
+    setTxModalPreselectedUnitId(undefined);
     setIsTxModalOpen(true);
   };
 
@@ -181,15 +192,26 @@ export default function MobilePage() {
       date: string;
       notes?: string;
     },
-    options?: { markSettled?: boolean }
+    options?: { markSettled?: boolean },
+    editingTxId?: string
   ) => {
-    addTransaction(data, options);
+    if (editingTxId) {
+      updateTransaction(editingTxId, data, options);
+      setToastMessage(
+        options?.markSettled
+          ? "Transaksi diperbarui & pos ditandai selesai!"
+          : "Transaksi berhasil diperbarui!"
+      );
+    } else {
+      addTransaction(data, options);
+      setToastMessage(
+        options?.markSettled
+          ? "Transaksi dicatat & pos ditandai selesai!"
+          : "Transaksi berhasil dicatat!"
+      );
+    }
+    setEditingTx(null);
     setIsTxModalOpen(false);
-    setToastMessage(
-      options?.markSettled
-        ? "Transaksi dicatat & pos ditandai selesai!"
-        : "Transaksi berhasil dicatat!"
-    );
     setIsSuccessToast(true);
     setTimeout(() => setIsSuccessToast(false), 2500);
   };
@@ -254,6 +276,7 @@ export default function MobilePage() {
             isLocked={isLocked}
             selectedMonth={selectedMonth}
             onOpenTxModal={openTxModal}
+            onEditTransaction={handleEditTransaction}
             onDeleteTransaction={deleteTransaction}
           />
         )}
@@ -294,15 +317,19 @@ export default function MobilePage() {
         </div>
       )}
 
-      {/* Modal: Catat Transaksi */}
+      {/* Modal: Catat & Edit Transaksi */}
       <RecordTransactionModal
         isOpen={isTxModalOpen}
-        onClose={() => setIsTxModalOpen(false)}
+        onClose={() => {
+          setIsTxModalOpen(false);
+          setEditingTx(null);
+        }}
         budgetItems={budgetItems}
         cashflowUnits={cashflowUnits}
         preselectedUnitId={txModalPreselectedUnitId}
         defaultType={txModalDefaultType}
         selectedMonth={selectedMonth}
+        editingTransaction={editingTx}
         onSaveTransaction={handleSaveTransaction}
       />
 

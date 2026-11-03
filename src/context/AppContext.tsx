@@ -120,6 +120,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateItemRealization: budgetPeriods.updateItemRealization,
     updateItemProjection: budgetPeriods.updateItemProjection,
     addTransaction: transactionsHook.addTransaction,
+    updateTransaction: transactionsHook.updateTransaction,
     deleteTransaction: transactionsHook.deleteTransaction,
 
     // Master Data Actions

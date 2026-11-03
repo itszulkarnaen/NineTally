@@ -11,6 +11,7 @@ import {
   Receipt,
   ArrowDownLeft,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { BudgetPeriodItem, CashflowUnit, CashflowTransaction, UrgencyLevel } from "@/types";
 import { TransactionView } from "../types";
@@ -22,6 +23,7 @@ interface TransactionsTabProps {
   isLocked: boolean;
   selectedMonth: string;
   onOpenTxModal: (preselectedUnitId?: string) => void;
+  onEditTransaction: (tx: CashflowTransaction) => void;
   onDeleteTransaction: (id: string) => void;
 }
 
@@ -32,6 +34,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
   isLocked,
   selectedMonth,
   onOpenTxModal,
+  onEditTransaction,
   onDeleteTransaction,
 }) => {
   const [transactionView, setTransactionView] = useState<TransactionView>("items");
@@ -475,13 +478,22 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
                     </span>
 
                     {!isLocked && (
-                      <button
-                        onClick={() => onDeleteTransaction(tx.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                        title="Hapus transaksi ini"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => onEditTransaction(tx)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-[#2196F3] hover:bg-[#E3F2FD] transition cursor-pointer"
+                          title="Edit transaksi ini"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onDeleteTransaction(tx.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                          title="Hapus transaksi ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

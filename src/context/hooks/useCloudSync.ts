@@ -455,6 +455,68 @@ export function useCloudSync({
         }
       }
 
+      if (payload.type === "TX_UPDATED") {
+        const {
+          updatedTx,
+          periodId,
+          cashflowUnitId,
+          unitTotal,
+          oldCashflowUnitId,
+          oldUnitTotal,
+          newBcaBalance,
+          linkedAssetUpdate,
+          isTargetItemRealized,
+        } = payload;
+
+        setTransactions((prev) =>
+          prev.map((t) => (t.id === updatedTx.id ? updatedTx : t))
+        );
+
+        setPeriodsMap((prev) => {
+          const period = prev[periodId];
+          if (!period) return prev;
+          return {
+            ...prev,
+            [periodId]: {
+              ...period,
+              real_bca_balance: newBcaBalance !== undefined ? newBcaBalance : period.real_bca_balance,
+              items: period.items.map((i) => {
+                if (i.cashflow_unit_id === cashflowUnitId) {
+                  return {
+                    ...i,
+                    realization_amount: unitTotal,
+                    projection_amount: unitTotal,
+                    actual_amount: unitTotal,
+                    is_realized:
+                      isTargetItemRealized !== undefined
+                        ? isTargetItemRealized
+                        : i.budget_amount > 0
+                        ? unitTotal >= i.budget_amount
+                        : true,
+                  };
+                }
+                if (oldCashflowUnitId && i.cashflow_unit_id === oldCashflowUnitId) {
+                  return {
+                    ...i,
+                    realization_amount: oldUnitTotal,
+                    projection_amount: oldUnitTotal,
+                    actual_amount: oldUnitTotal,
+                    is_realized: i.budget_amount > 0 ? oldUnitTotal >= i.budget_amount : oldUnitTotal > 0,
+                  };
+                }
+                return i;
+              }),
+            },
+          };
+        });
+
+        if (linkedAssetUpdate) {
+          setAssets((prev) =>
+            prev.map((a) => (a.id === linkedAssetUpdate.id ? { ...a, ...linkedAssetUpdate } : a))
+          );
+        }
+      }
+
       if (payload.type === "ITEM_REALIZED_TOGGLED") {
         const { periodId, itemId, isRealized } = payload;
         setPeriodsMap((prev) => {
