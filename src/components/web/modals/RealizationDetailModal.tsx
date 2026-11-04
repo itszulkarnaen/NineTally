@@ -5,8 +5,6 @@ import {
   X,
   Receipt,
   Calendar,
-  Clock,
-  FileText,
   AlertTriangle,
   Check,
   Tag,
@@ -14,9 +12,6 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
 } from "lucide-react";
 import { BudgetPeriodItem, CashflowUnit, CashflowTransaction, CashflowCategory } from "@/types";
 import { formatRupiah } from "@/lib/utils";
@@ -281,9 +276,6 @@ export const RealizationDetailModal: React.FC<RealizationDetailModalProps> = ({
   const isSettled = (budget > 0 && currentRealization >= budget) || item.is_realized;
   const isPartiallyPaid = budget > 0 && currentRealization > 0 && currentRealization < budget;
 
-  const totalTxAmount = itemTransactions.reduce((acc, t) => acc + t.amount, 0);
-  const filteredTxAmount = filteredTransactions.reduce((acc, t) => acc + t.amount, 0);
-
   return (
     <dialog
       ref={dialogRef}
@@ -309,6 +301,7 @@ export const RealizationDetailModal: React.FC<RealizationDetailModalProps> = ({
         <button
           type="button"
           onClick={onClose}
+          autoFocus
           aria-label="Tutup popup detail"
           className="p-1.5 rounded-xl text-[#666E61] hover:text-[#242921] hover:bg-[#EEEEEE] transition cursor-pointer"
         >
@@ -431,21 +424,11 @@ export const RealizationDetailModal: React.FC<RealizationDetailModalProps> = ({
 
         {/* Transactions Table Section */}
         <div className="space-y-3">
-          {/* Section Header & Subtitle */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <h5 className="text-xs font-bold uppercase tracking-wider text-[#242921]">
-                Daftar Riwayat Transaksi
-              </h5>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E3F2FD] text-[#2196F3]">
-                {filteredTransactions.length} Transaksi
-              </span>
-            </div>
-            {filteredTransactions.length > 0 && (
-              <span className="text-xs font-bold text-[#242921]">
-                Total: {formatRupiah(filteredTxAmount)}
-              </span>
-            )}
+          {/* Section Header */}
+          <div>
+            <h5 className="text-xs font-bold uppercase tracking-wider text-[#242921]">
+              Daftar Riwayat Transaksi
+            </h5>
           </div>
 
           {/* Search Bar & Date Filter Controls */}
@@ -598,27 +581,18 @@ export const RealizationDetailModal: React.FC<RealizationDetailModalProps> = ({
                               : "descending"
                             : "none"
                         }
-                        className="py-2.5 px-3 select-none cursor-pointer group hover:bg-[#E3F2FD]/50 transition-colors whitespace-nowrap"
+                        className={`py-2.5 px-3 select-none cursor-pointer hover:bg-[#E3F2FD]/50 transition-colors whitespace-nowrap font-bold ${
+                          sortField === "date" ? "text-[#2196F3]" : "text-[#666E61]"
+                        }`}
                         title="Klik untuk mengurutkan tanggal"
                       >
-                        <div className="inline-flex items-center gap-1">
-                          <span
-                            className={
-                              sortField === "date" ? "text-[#2196F3] font-bold" : "text-[#666E61]"
-                            }
-                          >
-                            Tanggal & Waktu
-                          </span>
-                          {sortField === "date" ? (
-                            sortDirection === "asc" ? (
-                              <ArrowUp className="w-3.5 h-3.5 text-[#2196F3] shrink-0" />
-                            ) : (
-                              <ArrowDown className="w-3.5 h-3.5 text-[#2196F3] shrink-0" />
-                            )
-                          ) : (
-                            <ArrowUpDown className="w-3 h-3 text-[#666E61]/40 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
-                        </div>
+                        Tanggal
+                      </th>
+                      <th
+                        scope="col"
+                        className="py-2.5 px-3 whitespace-nowrap font-bold text-[#666E61]"
+                      >
+                        Waktu
                       </th>
                       <th
                         scope="col"
@@ -630,27 +604,12 @@ export const RealizationDetailModal: React.FC<RealizationDetailModalProps> = ({
                               : "descending"
                             : "none"
                         }
-                        className="py-2.5 px-3 text-right select-none cursor-pointer group hover:bg-[#E3F2FD]/50 transition-colors whitespace-nowrap"
+                        className={`py-2.5 px-3 text-right select-none cursor-pointer hover:bg-[#E3F2FD]/50 transition-colors whitespace-nowrap font-bold ${
+                          sortField === "amount" ? "text-[#2196F3]" : "text-[#666E61]"
+                        }`}
                         title="Klik untuk mengurutkan nominal"
                       >
-                        <div className="inline-flex items-center justify-end gap-1">
-                          <span
-                            className={
-                              sortField === "amount" ? "text-[#2196F3] font-bold" : "text-[#666E61]"
-                            }
-                          >
-                            Nominal
-                          </span>
-                          {sortField === "amount" ? (
-                            sortDirection === "asc" ? (
-                              <ArrowUp className="w-3.5 h-3.5 text-[#2196F3] shrink-0" />
-                            ) : (
-                              <ArrowDown className="w-3.5 h-3.5 text-[#2196F3] shrink-0" />
-                            )
-                          ) : (
-                            <ArrowUpDown className="w-3 h-3 text-[#666E61]/40 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
-                        </div>
+                        Nominal
                       </th>
                       <th scope="col" className="py-2.5 px-3 font-bold text-[#666E61]">
                         Catatan Transaksi
@@ -668,17 +627,11 @@ export const RealizationDetailModal: React.FC<RealizationDetailModalProps> = ({
                           <td className="py-2.5 px-3 text-center text-[#666E61] font-semibold text-[11px]">
                             {rowNumber}
                           </td>
-                          <td className="py-2.5 px-3 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 font-semibold text-xs text-[#242921]">
-                              <Calendar className="w-3.5 h-3.5 text-[#2196F3]" />
-                              <span>{fullDate}</span>
-                            </div>
-                            {recordedTime && (
-                              <div className="flex items-center gap-1 text-[10px] text-[#666E61] mt-0.5 ml-5">
-                                <Clock className="w-3 h-3 text-[#666E61]/70" />
-                                <span>Pukul {recordedTime}</span>
-                              </div>
-                            )}
+                          <td className="py-2.5 px-3 whitespace-nowrap font-semibold text-xs text-[#242921]">
+                            {fullDate}
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap text-xs text-[#666E61]">
+                            {recordedTime || "-"}
                           </td>
                           <td className="py-2.5 px-3 text-right whitespace-nowrap">
                             <span className="font-bold text-xs text-[#242921]">
@@ -687,10 +640,9 @@ export const RealizationDetailModal: React.FC<RealizationDetailModalProps> = ({
                           </td>
                           <td className="py-2.5 px-3">
                             {tx.notes && tx.notes.trim() ? (
-                              <div className="flex items-start gap-1.5 text-xs text-[#242921] font-medium leading-relaxed">
-                                <FileText className="w-3.5 h-3.5 text-[#2196F3] shrink-0 mt-0.5" />
-                                <span className="break-words">{tx.notes}</span>
-                              </div>
+                              <span className="text-xs text-[#242921] font-medium leading-relaxed break-words">
+                                {tx.notes}
+                              </span>
                             ) : (
                               <span className="text-[#666E61]/50 italic text-[11px]">-</span>
                             )}
@@ -788,29 +740,6 @@ export const RealizationDetailModal: React.FC<RealizationDetailModalProps> = ({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between p-4 border-t border-[#EEEEEE] bg-[#FFFFFF]">
-        <div className="text-xs text-[#666E61]">
-          {itemTransactions.length > 0 ? (
-            <span>
-              Total Keseluruhan:{" "}
-              <strong className="text-[#242921]">{formatRupiah(totalTxAmount)}</strong> (
-              {itemTransactions.length} transaksi)
-            </span>
-          ) : (
-            <span>Pos belum memiliki mutasi transaksi</span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          autoFocus
-          className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white font-semibold text-xs rounded-xl transition shadow-xs cursor-pointer active:scale-95"
-        >
-          Tutup
-        </button>
       </div>
     </dialog>
   );
