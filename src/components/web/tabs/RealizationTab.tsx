@@ -3,17 +3,22 @@
 import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { formatRupiah } from "@/lib/utils";
-import { Search, X, Check, AlertTriangle } from "lucide-react";
+import { Search, X, Check, AlertTriangle, ChevronRight } from "lucide-react";
+import { BudgetPeriodItem } from "@/types";
+import { RealizationDetailModal } from "../modals/RealizationDetailModal";
 
 export const RealizationTab: React.FC = () => {
   const {
     currentMonthData,
     cashflowUnits,
+    categories,
     selectedMonth,
     toggleItemRealized,
+    transactions,
   } = useApp();
 
   const [realizationSearch, setRealizationSearch] = useState("");
+  const [selectedItemForDetail, setSelectedItemForDetail] = useState<BudgetPeriodItem | null>(null);
   const isLocked = currentMonthData.status === "LOCKED";
   const budgetItems = currentMonthData.items;
 
@@ -177,7 +182,7 @@ export const RealizationTab: React.FC = () => {
               Daftar Realisasi Cashflow Items ({budgetItems.length} Item)
             </h3>
             <p className="text-xs text-[#666E61] mt-0.5">
-              Status realisasi pengeluaran berbasis transaksi. Klik status untuk mengubah status item.
+              Status realisasi pengeluaran berbasis transaksi. Klik baris data untuk melihat rincian transaksi (nominal, waktu, dan catatan).
             </p>
           </div>
 
@@ -226,12 +231,13 @@ export const RealizationTab: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-[#EEEEEE] text-[#666E61]">
-                  <th className="py-2 px-3">Nama Cashflow Item</th>
-                  <th className="py-2 px-3">Kategori</th>
-                  <th className="py-2 px-3">Urgency</th>
-                  <th className="py-2 px-3">Budget Plan</th>
-                  <th className="py-2 px-3 text-center">Status</th>
-                  <th className="py-2 px-3 text-right">Selisih</th>
+                  <th className="py-2.5 px-3">Nama Cashflow Item</th>
+                  <th className="py-2.5 px-3">Kategori</th>
+                  <th className="py-2.5 px-3">Urgency</th>
+                  <th className="py-2.5 px-3">Budget Plan</th>
+                  <th className="py-2.5 px-3 text-center">Status</th>
+                  <th className="py-2.5 px-3 text-right">Selisih</th>
+                  <th className="py-2.5 px-3 text-center w-24">Rincian</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EEEEEE] text-[#242921]">
@@ -240,20 +246,37 @@ export const RealizationTab: React.FC = () => {
                   const currentRealization = item.realization_amount ?? item.projection_amount ?? 0;
                   const diff = currentRealization - item.budget_amount;
                   const statusInfo = getFinanceStatus(item);
+                  const itemTxCount = transactions.filter(
+                    (t) =>
+                      t.period_id === (item.period_id || selectedMonth) &&
+                      t.cashflow_unit_id === item.cashflow_unit_id
+                  ).length;
 
                   return (
-                    <tr key={item.id} className="hover:bg-[#E3F2FD]/20 transition">
-                      <td className="py-2 px-3">
-                        <span className="font-semibold text-xs text-[#242921] whitespace-nowrap">
-                          {unit?.name || "Cashflow Item"}
-                        </span>
+                    <tr
+                      key={item.id}
+                      onClick={() => setSelectedItemForDetail(item)}
+                      className="hover:bg-[#E3F2FD]/30 transition cursor-pointer group select-none"
+                      title="Klik baris untuk melihat rincian riwayat transaksi"
+                    >
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs text-[#242921] group-hover:text-[#2196F3] transition-colors whitespace-nowrap">
+                            {unit?.name || "Cashflow Item"}
+                          </span>
+                          {itemTxCount > 0 && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-md bg-[#2196F3]/10 text-[#2196F3] border border-[#2196F3]/20">
+                              {itemTxCount} Tx
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="py-2 px-3">
+                      <td className="py-2.5 px-3">
                         <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#E3F2FD] text-[#666E61] font-semibold whitespace-nowrap">
                           {unit?.category || unit?.unit_type}
                         </span>
                       </td>
-                      <td className="py-2 px-3">
+                      <td className="py-2.5 px-3">
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${
                             item.urgency === "HIGHEST"
@@ -266,12 +289,16 @@ export const RealizationTab: React.FC = () => {
                           {item.urgency}
                         </span>
                       </td>
-                      <td className="py-2 px-3 font-medium text-[#242921] whitespace-nowrap">
+                      <td className="py-2.5 px-3 font-medium text-[#242921] whitespace-nowrap">
                         {formatRupiah(item.budget_amount)}
                       </td>
-                      <td className="py-2 px-3 text-center">
+                      <td className="py-2.5 px-3 text-center">
                         <button
-                          onClick={() => toggleItemRealized(item.id)}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleItemRealized(item.id);
+                          }}
                           disabled={isLocked}
                           className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border transition flex items-center justify-center gap-1 mx-auto whitespace-nowrap active:scale-95 cursor-pointer ${statusInfo.badgeClass}`}
                           title="Klik untuk ubah status realisasi"
@@ -280,7 +307,7 @@ export const RealizationTab: React.FC = () => {
                           <span>{statusInfo.label}</span>
                         </button>
                       </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
                         {diff > 0 ? (
                           <span className="text-rose-600 font-bold text-xs">
                             +{formatRupiah(diff)}
@@ -293,6 +320,19 @@ export const RealizationTab: React.FC = () => {
                           <span className="text-[#666E61] text-xs font-medium">-</span>
                         )}
                       </td>
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedItemForDetail(item);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold text-[#2196F3] bg-[#E3F2FD] hover:bg-[#2196F3] hover:text-white transition cursor-pointer active:scale-95 shadow-2xs"
+                        >
+                          <span>Detail</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -301,6 +341,23 @@ export const RealizationTab: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Realization Detail Modal */}
+      {selectedItemForDetail && (
+        <RealizationDetailModal
+          isOpen={Boolean(selectedItemForDetail)}
+          onClose={() => setSelectedItemForDetail(null)}
+          item={selectedItemForDetail}
+          unit={cashflowUnits.find((u) => u.id === selectedItemForDetail.cashflow_unit_id)}
+          category={categories.find(
+            (c) =>
+              c.code ===
+              cashflowUnits.find((u) => u.id === selectedItemForDetail.cashflow_unit_id)?.category
+          )}
+          transactions={transactions}
+          selectedMonth={selectedMonth}
+        />
+      )}
     </div>
   );
 };
