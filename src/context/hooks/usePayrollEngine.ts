@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { PayrollSettings, CashflowUnit, CashflowTransaction } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { MonthPeriodData } from "../types";
-import { defaultPayrollSettings, getCurrentMonthKey, getNextMonthKey, isPaydayReached } from "../constants";
+import { defaultPayrollSettings, getCurrentMonthKey, getNextMonthKey, getPreviousMonthKey, isPaydayReached } from "../constants";
 
 interface UsePayrollEngineOptions {
   selectedMonth: string;
@@ -55,6 +55,84 @@ export function usePayrollEngine({
             if (error) console.warn("Supabase upsert payroll_settings error/skipped:", error.message);
           });
       }
+
+      // Sync target CF Unit Gaji in current selectedMonth & rollover salary_budget
+      const targetUnit =
+        cashflowUnits.find((u) => u.id === updated.target_unit_id) ||
+        cashflowUnits.find((u) => u.unit_type === "INCOME");
+      const actualUnitId = targetUnit ? targetUnit.id : updated.target_unit_id;
+      const prevMonth = getPreviousMonthKey(selectedMonth);
+      const nextMonth = getNextMonthKey(selectedMonth);
+
+      setPeriodsMap((prevMap) => {
+        const currentPeriod = prevMap[selectedMonth];
+        if (!currentPeriod || currentPeriod.status === "LOCKED") return prevMap;
+
+        // Check if previous month had a specific salary item nominal
+        const prevPeriod = prevMap[prevMonth];
+        const prevSalaryItem = prevPeriod?.items.find((i) => i.cashflow_unit_id === actualUnitId);
+        const modalForCurrentMonth =
+          updated.next_month_allocation && prevSalaryItem && prevSalaryItem.budget_amount > 0
+            ? prevSalaryItem.budget_amount
+            : updated.monthly_salary;
+
+        const hasIncomeItem = currentPeriod.items.some((i) => i.cashflow_unit_id === actualUnitId);
+        const updatedItems = hasIncomeItem
+          ? currentPeriod.items.map((i) =>
+              i.cashflow_unit_id === actualUnitId
+                ? {
+                    ...i,
+                    budget_amount: updated.monthly_salary,
+                    projection_amount: updated.monthly_salary,
+                    actual_amount: i.is_realized ? i.actual_amount : updated.monthly_salary,
+                  }
+                : i
+            )
+          : targetUnit
+          ? [
+              {
+                id: `bi-${selectedMonth}-${Date.now()}`,
+                period_id: selectedMonth,
+                cashflow_unit_id: actualUnitId,
+                budget_amount: updated.monthly_salary,
+                realization_amount: 0,
+                projection_amount: updated.monthly_salary,
+                actual_amount: updated.monthly_salary,
+                urgency: targetUnit.default_urgency || "HIGHEST",
+                is_realized: false,
+                sort_order: 0,
+              },
+              ...currentPeriod.items,
+            ]
+          : currentPeriod.items;
+
+        const nextPeriod = prevMap[nextMonth] || {
+          period_month: nextMonth,
+          status: "PLANNING" as const,
+          salary_budget: updated.monthly_salary,
+          additional_budget: 0,
+          real_bca_balance: 0,
+          real_jago_balance: 0,
+          items: [],
+        };
+
+        return {
+          ...prevMap,
+          [selectedMonth]: {
+            ...currentPeriod,
+            salary_budget: modalForCurrentMonth,
+            items: updatedItems,
+          },
+          ...(updated.next_month_allocation
+            ? {
+                [nextMonth]: {
+                  ...nextPeriod,
+                  salary_budget: updated.monthly_salary,
+                },
+              }
+            : {}),
+        };
+      });
 
       broadcastSync({
         type: "PAYROLL_SETTINGS_UPDATED",

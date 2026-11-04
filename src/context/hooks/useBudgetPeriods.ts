@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CashflowUnit, BudgetPeriodItem, Asset } from "@/types";
 import { MonthPeriodData } from "../types";
-import { initialMonthsData } from "../constants";
+import { initialMonthsData, getNextMonthKey } from "../constants";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 
 interface UseBudgetPeriodsOptions {
@@ -154,6 +154,22 @@ export function useBudgetPeriods({
 
     setPeriodsMap((prev) => {
       const current = prev[selectedMonth] || currentMonthData;
+      const targetItem = current.items.find((i) => i.id === itemId);
+      const targetUnit = targetItem
+        ? cashflowUnits.find((u) => u.id === targetItem.cashflow_unit_id)
+        : undefined;
+      const isIncomeUnit = targetUnit?.unit_type === "INCOME";
+      const nextMonth = getNextMonthKey(selectedMonth);
+      const existingNext = prev[nextMonth] || {
+        period_month: nextMonth,
+        status: "PLANNING" as const,
+        salary_budget: newBudget,
+        additional_budget: 0,
+        real_bca_balance: 0,
+        real_jago_balance: 0,
+        items: [],
+      };
+
       return {
         ...prev,
         [selectedMonth]: {
@@ -170,6 +186,14 @@ export function useBudgetPeriods({
               : i
           ),
         },
+        ...(isIncomeUnit
+          ? {
+              [nextMonth]: {
+                ...existingNext,
+                salary_budget: newBudget,
+              },
+            }
+          : {}),
       };
     });
   };

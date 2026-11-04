@@ -10,7 +10,11 @@ export const ActualTab: React.FC = () => {
 
   const isLocked = currentMonthData.status === "LOCKED";
   const budgetItems = currentMonthData.items;
-  const totalActual = budgetItems.reduce((acc, curr) => acc + curr.actual_amount, 0);
+  const outflowItems = budgetItems.filter((item) => {
+    const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+    return unit?.unit_type !== "INCOME";
+  });
+  const totalActual = outflowItems.reduce((acc, curr) => acc + curr.actual_amount, 0);
 
   return (
     <div className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-3xl p-6 shadow-xs space-y-4">

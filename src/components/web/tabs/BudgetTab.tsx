@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useApp } from "@/context/AppContext";
+import { useApp, getNextMonthKey, getPreviousMonthKey } from "@/context/AppContext";
 import { formatRupiah } from "@/lib/utils";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
 import {
@@ -41,22 +41,64 @@ export const BudgetTab: React.FC = () => {
   const isLocked = currentMonthData.status === "LOCKED";
   const budgetItems = currentMonthData.items;
 
-  // Local state for income inputs
-  const [salaryValue, setSalaryValue] = useState<number>(currentMonthData.salary_budget);
-  const [additionalValue, setAdditionalValue] = useState<number>(currentMonthData.additional_budget);
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [isCopiedToast, setIsCopiedToast] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Sync income inputs when month changes
-  useEffect(() => {
-    setSalaryValue(currentMonthData.salary_budget);
-    setAdditionalValue(currentMonthData.additional_budget);
-  }, [selectedMonth, currentMonthData.salary_budget, currentMonthData.additional_budget]);
+  const prevMonthKey = getPreviousMonthKey(selectedMonth);
+  const nextMonthKey = getNextMonthKey(selectedMonth);
 
-  // Financial Calculations for Budget
-  const totalIncomeAvailable = salaryValue + additionalValue;
-  const totalBudgetPlanned = budgetItems.reduce((acc, curr) => acc + curr.budget_amount, 0);
+  // Payday Engine: Identify target INCOME unit
+  const targetIncomeUnit =
+    cashflowUnits.find((u) => u.id === payrollSettings.target_unit_id) ||
+    cashflowUnits.find((u) => u.unit_type === "INCOME");
+  const incomeUnitId = targetIncomeUnit ? targetIncomeUnit.id : payrollSettings.target_unit_id;
+  const paydayTxInCurrentMonth = transactions.find(
+    (t) =>
+      t.period_id === selectedMonth &&
+      (t.cashflow_unit_id === incomeUnitId || (t.notes && t.notes.toLowerCase().includes("gaji")))
+  );
+
+  // Auto-ensure CF Unit Gaji (targetIncomeUnit) is in current month's items so it can be recorded at end of selectedMonth for nextMonthKey
+  useEffect(() => {
+    if (isLocked || !targetIncomeUnit) return;
+    const hasSalaryItem = budgetItems.some((item) => item.cashflow_unit_id === targetIncomeUnit.id);
+    if (!hasSalaryItem && budgetItems.length > 0 && payrollSettings.monthly_salary > 0) {
+      addItemToCurrentMonth(targetIncomeUnit.id, payrollSettings.monthly_salary);
+    }
+  }, [selectedMonth, isLocked, targetIncomeUnit?.id, budgetItems.length]);
+
+  // Separate INCOME items vs Outflow (EXPENSE & ASSET) items
+  const outflowItems = budgetItems.filter((item) => {
+    const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+    return unit?.unit_type !== "INCOME";
+  });
+
+  const incomeItems = budgetItems.filter((item) => {
+    const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+    return unit?.unit_type === "INCOME";
+  });
+
+  // Rollover Salary Logic:
+  // Gaji dicatat di bulan berjalan (e.g. Oktober), namun digunakan untuk anggaran bulan berikutnya (e.g. November).
+  // Maka anggaran bulan selectedMonth (e.g. November) berasal dari Gaji bulan prevMonthKey (e.g. Oktober).
+  const prevMonthSalaryNominal = targetIncomeUnit
+    ? getPreviousMonthUnitNominal(targetIncomeUnit.id)
+    : null;
+
+  const baseSalaryForCurrentMonth = payrollSettings.next_month_allocation
+    ? prevMonthSalaryNominal ?? (currentMonthData.salary_budget || payrollSettings.monthly_salary)
+    : 0;
+
+  // Additional INCOME units in current month that are NOT the rollover salary unit (or all INCOME units if next_month_allocation is off)
+  const additionalIncomeFromUnits = incomeItems.reduce((acc, item) => {
+    const isRolloverSalary =
+      payrollSettings.next_month_allocation && item.cashflow_unit_id === incomeUnitId;
+    return isRolloverSalary ? acc : acc + item.budget_amount;
+  }, 0);
+
+  const totalIncomeAvailable = baseSalaryForCurrentMonth + additionalIncomeFromUnits;
+  const totalBudgetPlanned = outflowItems.reduce((acc, curr) => acc + curr.budget_amount, 0);
   const remainingToAllocate = totalIncomeAvailable - totalBudgetPlanned;
 
   // Local state for Payroll Engine UI
@@ -97,20 +139,9 @@ export const BudgetTab: React.FC = () => {
     setTimeout(() => setPayrollToastMsg(null), 3000);
   };
 
-  // Payday Engine: Check whether payday transaction has been logged for current selectedMonth
-  const targetIncomeUnit =
-    cashflowUnits.find((u) => u.id === payrollSettings.target_unit_id) ||
-    cashflowUnits.find((u) => u.unit_type === "INCOME");
-  const incomeUnitId = targetIncomeUnit ? targetIncomeUnit.id : payrollSettings.target_unit_id;
-  const paydayTxInCurrentMonth = transactions.find(
-    (t) =>
-      t.period_id === selectedMonth &&
-      (t.cashflow_unit_id === incomeUnitId || (t.notes && t.notes.toLowerCase().includes("gaji")))
-  );
-
   // Handle explicit Save Budget
   const handleSaveBudget = () => {
-    updateMonthIncome(salaryValue, additionalValue);
+    updateMonthIncome(baseSalaryForCurrentMonth, additionalIncomeFromUnits);
     const success = saveCurrentMonthBudget();
     if (success) {
       setIsSavedToast(true);
@@ -226,42 +257,27 @@ export const BudgetTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Simplified Income Setup & Summary Section */}
+        {/* Simplified Summary & Payday Settings Section (No Manual Income Inputs) */}
         <div className="p-5 bg-[#F8FAFC]/60 border-b border-[#EEEEEE] space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] text-[#666E61] font-semibold block mb-1">
-                Anggaran Gaji Utama
-              </label>
-              <CurrencyInput
-                value={salaryValue}
-                disabled={isLocked}
-                onChange={setSalaryValue}
-                textAlign="left"
-              />
+          {/* 3 Summary Pills: Modal Anggaran (Gaji Bulan Lalu + Income), Total Dialokasikan, Belum Dialokasikan */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-[#FFFFFF] rounded-2xl p-3 border border-[#EEEEEE] flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-[#666E61] font-medium">Modal Anggaran</span>
+                <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
+                  {payrollSettings.next_month_allocation ? `Dari Gaji ${prevMonthKey}` : "Bulan Ini"}
+                </span>
+              </div>
+              <span className="text-xs font-bold text-[#242921] mt-1">{formatRupiah(totalIncomeAvailable)}</span>
             </div>
 
-            <div>
-              <label className="text-[11px] text-[#666E61] font-semibold block mb-1">
-                Sisa Dana Bulan Lalu / Tambahan
-              </label>
-              <CurrencyInput
-                value={additionalValue}
-                disabled={isLocked}
-                onChange={setAdditionalValue}
-                textAlign="left"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#FFFFFF] rounded-2xl p-3 border border-[#EEEEEE] flex items-center justify-between">
+            <div className="bg-[#FFFFFF] rounded-2xl p-3 border border-[#EEEEEE] flex flex-col justify-between">
               <span className="text-[11px] text-[#666E61] font-medium">Total Dialokasikan</span>
-              <span className="text-xs font-bold text-[#242921]">{formatRupiah(totalBudgetPlanned)}</span>
+              <span className="text-xs font-bold text-[#242921] mt-1">{formatRupiah(totalBudgetPlanned)}</span>
             </div>
 
             <div
-              className={`rounded-2xl p-3 border flex items-center justify-between ${
+              className={`rounded-2xl p-3 border flex flex-col justify-between ${
                 remainingToAllocate < 0
                   ? "bg-rose-50 border-rose-200"
                   : "bg-[#E3F2FD]/40 border-[#2196F3]/20"
@@ -269,7 +285,7 @@ export const BudgetTab: React.FC = () => {
             >
               <span className="text-[11px] text-[#666E61] font-medium">Belum Dialokasikan</span>
               <span
-                className={`text-xs font-bold ${
+                className={`text-xs font-bold mt-1 ${
                   remainingToAllocate < 0 ? "text-rose-600" : "text-[#2196F3]"
                 }`}
               >
@@ -288,6 +304,11 @@ export const BudgetTab: React.FC = () => {
                   <span className="text-[10px] font-medium text-[#666E61] bg-[#F8FAFC] px-2 py-0.5 rounded-lg border border-[#EEEEEE]">
                     {payrollSettings.is_last_day ? "Akhir Bulan" : `Tgl ${payrollSettings.payday_day}`} • {formatRupiah(payrollSettings.monthly_salary)}
                   </span>
+                  {payrollSettings.next_month_allocation && (
+                    <span className="text-[10px] font-semibold text-[#2196F3] bg-[#E3F2FD]/60 px-2 py-0.5 rounded-lg">
+                      Gaji {selectedMonth} → Dipakai {nextMonthKey}
+                    </span>
+                  )}
                   {paydayTxInCurrentMonth && (
                     <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-600" />
@@ -484,28 +505,66 @@ export const BudgetTab: React.FC = () => {
           <div className="divide-y divide-[#EEEEEE]">
             {budgetItems.map((item) => {
               const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+              const isIncome = unit?.unit_type === "INCOME";
+              const isRolloverSalary =
+                isIncome && payrollSettings.next_month_allocation && item.cashflow_unit_id === incomeUnitId;
+
               return (
-                <div key={item.id} className="p-4 flex items-center justify-between gap-4 hover:bg-[#E3F2FD]/20 transition">
+                <div
+                  key={item.id}
+                  className={`p-4 flex items-center justify-between gap-4 transition ${
+                    isIncome ? "bg-emerald-50/30 hover:bg-emerald-50/60" : "hover:bg-[#E3F2FD]/20"
+                  }`}
+                >
                   <div className="flex items-center gap-3">
                     <GripVertical className="w-4 h-4 text-slate-300" />
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-xs text-[#242921]">{unit?.name}</span>
                         <span className="text-[10px] text-[#666E61]">({unit?.code})</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-[#E3F2FD] text-[#666E61] font-semibold">
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-lg font-semibold ${
+                            isIncome
+                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                              : "bg-[#E3F2FD] text-[#666E61]"
+                          }`}
+                        >
                           {unit?.category || unit?.unit_type}
                         </span>
+                        {isRolloverSalary && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#2196F3]/15 text-[#2196F3] font-semibold">
+                            Dicatat {selectedMonth} → Dipakai Budget {nextMonthKey}
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] text-[#666E61] mt-0.5 block">
-                        Urgency: <strong>{item.urgency}</strong>
+                        {isIncome ? (
+                          isRolloverSalary ? (
+                            <>Pemasukan Rutin • Tidak memotong alokasi belanja {selectedMonth}</>
+                          ) : (
+                            <>Pemasukan Tambahan ({selectedMonth})</>
+                          )
+                        ) : (
+                          <>
+                            Urgency: <strong>{item.urgency}</strong>
+                          </>
+                        )}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="w-36">
-                      <span className="text-[10px] text-[#666E61] block text-right font-medium mb-0.5">
-                        Budget Plan
+                    <div className="w-40">
+                      <span
+                        className={`text-[10px] block text-right font-medium mb-0.5 ${
+                          isIncome ? "text-emerald-700 font-semibold" : "text-[#666E61]"
+                        }`}
+                      >
+                        {isRolloverSalary
+                          ? `Target Gaji (Untuk ${nextMonthKey})`
+                          : isIncome
+                          ? "Target Pemasukan"
+                          : "Budget Plan"}
                       </span>
                       <CurrencyInput
                         value={item.budget_amount}

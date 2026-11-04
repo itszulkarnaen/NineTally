@@ -61,6 +61,16 @@ export function getNextMonthKey(monthKey: string): string {
   return `${year}-${String(month + 1).padStart(2, "0")}`;
 }
 
+export function getPreviousMonthKey(monthKey: string): string {
+  const [yearStr, monthStr] = monthKey.split("-");
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  if (month === 1) {
+    return `${year - 1}-12`;
+  }
+  return `${year}-${String(month - 1).padStart(2, "0")}`;
+}
+
 export function getCurrentMonthKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

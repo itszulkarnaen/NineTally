@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { useApp } from "@/context/AppContext";
+import { useApp, getNextMonthKey, getPreviousMonthKey } from "@/context/AppContext";
 import { formatRupiah } from "@/lib/utils";
 import {
   Search,
@@ -43,6 +43,8 @@ export const RealizationTab: React.FC = () => {
     selectedMonth,
     toggleItemRealized,
     transactions,
+    payrollSettings,
+    getPreviousMonthUnitNominal,
   } = useApp();
 
   // Search & Filter State
@@ -65,23 +67,79 @@ export const RealizationTab: React.FC = () => {
   const isLocked = currentMonthData.status === "LOCKED";
   const budgetItems = currentMonthData.items;
 
-  // Summary Metrics
-  const totalRealization = budgetItems.reduce(
+  const prevMonthKey = getPreviousMonthKey(selectedMonth);
+  const nextMonthKey = getNextMonthKey(selectedMonth);
+
+  const targetIncomeUnit =
+    cashflowUnits.find((u) => u.id === payrollSettings.target_unit_id) ||
+    cashflowUnits.find((u) => u.unit_type === "INCOME");
+  const incomeUnitId = targetIncomeUnit ? targetIncomeUnit.id : payrollSettings.target_unit_id;
+
+  // Separate Outflow (EXPENSE & ASSET) from INCOME so INCOME is never counted as spending
+  const outflowItems = budgetItems.filter((item) => {
+    const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+    return unit?.unit_type !== "INCOME";
+  });
+
+  const incomeItems = budgetItems.filter((item) => {
+    const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+    return unit?.unit_type === "INCOME";
+  });
+
+  const prevMonthSalaryNominal = targetIncomeUnit
+    ? getPreviousMonthUnitNominal(targetIncomeUnit.id)
+    : null;
+  const baseSalaryForCurrentMonth = payrollSettings.next_month_allocation
+    ? prevMonthSalaryNominal ?? (currentMonthData.salary_budget || payrollSettings.monthly_salary)
+    : 0;
+  const additionalIncomeFromUnits = incomeItems.reduce((acc, item) => {
+    const isRolloverSalary =
+      payrollSettings.next_month_allocation && item.cashflow_unit_id === incomeUnitId;
+    return isRolloverSalary ? acc : acc + item.budget_amount;
+  }, 0);
+  const totalModalIncome = baseSalaryForCurrentMonth + additionalIncomeFromUnits;
+
+  // Summary Metrics (Outflow / Pengeluaran & Alokasi Aset Only)
+  const totalRealization = outflowItems.reduce(
     (acc, curr) => acc + (curr.realization_amount ?? curr.projection_amount ?? 0),
     0
   );
-  const totalBudget = budgetItems.reduce((acc, curr) => acc + curr.budget_amount, 0);
+  const totalBudget = outflowItems.reduce((acc, curr) => acc + curr.budget_amount, 0);
   const netDifference = totalRealization - totalBudget;
   const realizedCount = budgetItems.filter((i) => i.is_realized).length;
   const progressPct = budgetItems.length > 0 ? Math.round((realizedCount / budgetItems.length) * 100) : 0;
-  const sisaKasAnggaran = (currentMonthData.salary_budget + currentMonthData.additional_budget) - totalRealization;
+  const sisaKasAnggaran = totalModalIncome - totalRealization;
 
   // Finance Status Helper (Professional Terminology)
   const getFinanceStatus = (item: typeof budgetItems[0]) => {
+    const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+    const isIncome = unit?.unit_type === "INCOME";
     const spent = item.realization_amount ?? item.projection_amount ?? 0;
     const budget = item.budget_amount;
 
-    // 1. Overbudget (Realisasi melebihi budget)
+    if (isIncome) {
+      if ((budget > 0 && spent >= budget) || item.is_realized) {
+        return {
+          label: "Settled",
+          badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+          icon: Check,
+        };
+      }
+      if (spent > 0) {
+        return {
+          label: "Partially Paid",
+          badgeClass: "bg-sky-50 text-sky-700 border-sky-200",
+          icon: null,
+        };
+      }
+      return {
+        label: "Outstanding",
+        badgeClass: "bg-slate-100 text-slate-600 border-slate-200",
+        icon: null,
+      };
+    }
+
+    // 1. Overbudget (Realisasi pengeluaran melebihi budget)
     if ((budget > 0 && spent > budget) || (budget === 0 && spent > 0)) {
       return {
         label: "Overbudget",
@@ -357,7 +415,8 @@ export const RealizationTab: React.FC = () => {
             {formatRupiah(sisaKasAnggaran)}
           </span>
           <span className="text-[10px] text-[#666E61] mt-1 block">
-            Dari Total Pemasukan ({formatRupiah(currentMonthData.salary_budget + currentMonthData.additional_budget)})
+            Dari Modal Anggaran ({formatRupiah(totalModalIncome)}
+            {payrollSettings.next_month_allocation ? ` • Gaji ${prevMonthKey}` : ""})
           </span>
         </div>
 
@@ -519,6 +578,11 @@ export const RealizationTab: React.FC = () => {
                 <tbody className="divide-y divide-[#EEEEEE] text-[#242921]">
                   {paginatedItems.map((item) => {
                     const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
+                    const isIncome = unit?.unit_type === "INCOME";
+                    const isRolloverSalary =
+                      isIncome &&
+                      payrollSettings.next_month_allocation &&
+                      item.cashflow_unit_id === incomeUnitId;
                     const currentRealization = item.realization_amount ?? item.projection_amount ?? 0;
                     const diff = currentRealization - item.budget_amount;
                     const statusInfo = getFinanceStatus(item);
@@ -527,7 +591,9 @@ export const RealizationTab: React.FC = () => {
                       <tr
                         key={item.id}
                         onClick={() => setSelectedItemForDetail(item)}
-                        className="hover:bg-[#E3F2FD]/30 transition cursor-pointer group select-none"
+                        className={`transition cursor-pointer group select-none ${
+                          isIncome ? "bg-emerald-50/20 hover:bg-emerald-50/50" : "hover:bg-[#E3F2FD]/30"
+                        }`}
                         title="Klik baris untuk melihat rincian riwayat transaksi"
                       >
                         <td className="py-2.5 px-3">
@@ -536,8 +602,16 @@ export const RealizationTab: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-2.5 px-3">
-                          <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#E3F2FD] text-[#666E61] font-semibold whitespace-nowrap">
-                            {unit?.category || unit?.unit_type}
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-lg font-semibold whitespace-nowrap ${
+                              isIncome
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                : "bg-[#E3F2FD] text-[#666E61]"
+                            }`}
+                          >
+                            {isRolloverSalary
+                              ? `INCOME (Untuk ${nextMonthKey})`
+                              : unit?.category || unit?.unit_type}
                           </span>
                         </td>
                         <td className="py-2.5 px-3">
