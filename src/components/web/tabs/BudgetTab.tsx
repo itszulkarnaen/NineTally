@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Plus,
   Trash2,
-  Lock,
   Save,
   GripVertical,
   Check,
@@ -38,7 +37,6 @@ export const BudgetTab: React.FC = () => {
     transactions,
   } = useApp();
 
-  const isLocked = currentMonthData.status === "LOCKED";
   const budgetItems = currentMonthData.items;
 
   const [isSavedToast, setIsSavedToast] = useState(false);
@@ -61,12 +59,12 @@ export const BudgetTab: React.FC = () => {
 
   // Auto-ensure CF Unit Gaji (targetIncomeUnit) is in current month's items so it can be recorded at end of selectedMonth for nextMonthKey
   useEffect(() => {
-    if (isLocked || !targetIncomeUnit) return;
+    if (!targetIncomeUnit) return;
     const hasSalaryItem = budgetItems.some((item) => item.cashflow_unit_id === targetIncomeUnit.id);
     if (!hasSalaryItem && budgetItems.length > 0 && payrollSettings.monthly_salary > 0) {
       addItemToCurrentMonth(targetIncomeUnit.id, payrollSettings.monthly_salary);
     }
-  }, [selectedMonth, isLocked, targetIncomeUnit?.id, budgetItems.length]);
+  }, [selectedMonth, targetIncomeUnit?.id, budgetItems.length]);
 
   // Separate INCOME items vs Outflow (EXPENSE & ASSET) items
   const outflowItems = budgetItems.filter((item) => {
@@ -161,7 +159,7 @@ export const BudgetTab: React.FC = () => {
   // Drag and drop handlers
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    if (!isLocked) setIsDragOver(true);
+    setIsDragOver(true);
   };
 
   const handleDragLeave = () => {
@@ -171,7 +169,6 @@ export const BudgetTab: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    if (isLocked) return;
 
     const unitId = e.dataTransfer.getData("text/plain");
     if (unitId) {
@@ -198,22 +195,9 @@ export const BudgetTab: React.FC = () => {
         {/* Unified Card Header with Save Button */}
         <div className="p-5 border-b border-[#EEEEEE] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-xs font-bold text-[#242921] uppercase tracking-wider">
-                Setup Pendapatan & Anggaran ({selectedMonth})
-              </h4>
-              {isLocked ? (
-                <span className="text-[10px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
-                  <Lock className="w-3 h-3" />
-                  Terkunci
-                </span>
-              ) : (
-                <span className="text-[10px] font-semibold text-[#2196F3] bg-[#2196F3]/15 px-2 py-0.5 rounded-full border border-[#2196F3]/30 flex items-center gap-1">
-                  <Sliders className="w-3 h-3" />
-                  Mode Edit
-                </span>
-              )}
-            </div>
+            <h4 className="text-xs font-bold text-[#242921] uppercase tracking-wider">
+              Setup Pendapatan & Anggaran ({selectedMonth})
+            </h4>
             <p className="text-[11px] text-[#666E61] mt-0.5">
               Atur pemasukan dan susun alokasi cashflow items bulanan dalam satu panel.
             </p>
@@ -232,7 +216,7 @@ export const BudgetTab: React.FC = () => {
                 Disalin!
               </span>
             )}
-            {!isLocked && budgetItems.length === 0 && (
+            {budgetItems.length === 0 && (
               <button
                 onClick={handleCopyPreviousMonth}
                 className="px-3 py-1.5 rounded-xl bg-[#E3F2FD]/50 hover:bg-[#E3F2FD] text-[#242921] text-xs font-semibold border border-[#EEEEEE] transition flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -244,12 +228,7 @@ export const BudgetTab: React.FC = () => {
             )}
             <button
               onClick={handleSaveBudget}
-              disabled={isLocked}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer ${
-                isLocked
-                  ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                  : "bg-[#2196F3] hover:bg-[#1E88E5] text-white"
-              }`}
+              className="px-4 py-2 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer bg-[#2196F3] hover:bg-[#1E88E5] text-white"
             >
               <Save className="w-4 h-4" />
               <span>Simpan Budget</span>
@@ -489,7 +468,6 @@ export const BudgetTab: React.FC = () => {
 
             <button
               onClick={handleCopyPreviousMonth}
-              disabled={isLocked}
               className="px-4 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2 cursor-pointer"
             >
               <Copy className="w-4 h-4" />
@@ -501,8 +479,6 @@ export const BudgetTab: React.FC = () => {
             {budgetItems.map((item) => {
               const unit = cashflowUnits.find((u) => u.id === item.cashflow_unit_id);
               const isIncome = unit?.unit_type === "INCOME";
-              const isRolloverSalary =
-                isIncome && payrollSettings.next_month_allocation && item.cashflow_unit_id === incomeUnitId;
 
               return (
                 <div
@@ -550,14 +526,12 @@ export const BudgetTab: React.FC = () => {
                       </span>
                       <CurrencyInput
                         value={item.budget_amount}
-                        disabled={isLocked}
                         onChange={(val) => updateItemBudgetAmount(item.id, val)}
                         textAlign="right"
                       />
                     </div>
                     <button
                       onClick={() => removeItemFromCurrentMonth(item.id)}
-                      disabled={isLocked}
                       className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition mt-3 cursor-pointer"
                       title="Hapus pos ini"
                     >
@@ -597,13 +571,11 @@ export const BudgetTab: React.FC = () => {
               return (
                 <div
                   key={unit.id}
-                  draggable={!isLocked}
+                  draggable={true}
                   onDragStart={(e) => {
                     e.dataTransfer.setData("text/plain", unit.id);
                   }}
-                  className={`p-3 bg-[#E3F2FD]/20 border border-[#EEEEEE] hover:border-[#2196F3]/50 rounded-2xl flex items-center justify-between gap-2 transition ${
-                    isLocked ? "cursor-not-allowed opacity-60" : "cursor-grab active:cursor-grabbing hover:shadow-xs"
-                  }`}
+                  className="p-3 bg-[#E3F2FD]/20 border border-[#EEEEEE] hover:border-[#2196F3]/50 rounded-2xl flex items-center justify-between gap-2 transition cursor-grab active:cursor-grabbing hover:shadow-xs"
                 >
                   <div className="flex items-center gap-2">
                     <GripVertical className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -627,7 +599,6 @@ export const BudgetTab: React.FC = () => {
 
                   <button
                     onClick={() => addItemToCurrentMonth(unit.id)}
-                    disabled={isLocked}
                     className="px-2.5 py-1 text-xs font-semibold rounded-xl bg-[#2196F3] hover:bg-[#1E88E5] text-white transition flex items-center gap-1 shadow-2xs cursor-pointer"
                     title="Tambah ke anggaran (nominal bulan lalu)"
                   >

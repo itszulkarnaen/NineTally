@@ -7,7 +7,6 @@ import { WebSidebar } from "@/components/web/WebSidebar";
 import { WebHeader } from "@/components/web/WebHeader";
 import { BudgetTab } from "@/components/web/tabs/BudgetTab";
 import { RealizationTab } from "@/components/web/tabs/RealizationTab";
-import { ActualTab } from "@/components/web/tabs/ActualTab";
 import { BankBalanceTab } from "@/components/web/tabs/BankBalanceTab";
 import { CashflowItemsTab } from "@/components/web/tabs/CashflowItemsTab";
 import { CategoriesTab } from "@/components/web/tabs/CategoriesTab";
@@ -20,9 +19,6 @@ export default function WebPage() {
     cashflowUnits,
     selectedMonth,
     setSelectedMonth,
-    currentMonthData,
-    lockCurrentMonth,
-    unlockCurrentMonth,
     updateCashflowUnit,
     cloudSyncStatus,
     retryCloudSync,
@@ -31,8 +27,6 @@ export default function WebPage() {
   const [activeTab, setActiveTab] = useState<NavTab>("budget");
   const [globalToast, setGlobalToast] = useState<string | null>(null);
   const [validationAlert, setValidationAlert] = useState<ValidationAlertState | null>(null);
-
-  const isLocked = currentMonthData.status === "LOCKED";
 
   const handleLogout = async () => {
     if (window.confirm("Yakin mau keluar dari NineTally?")) {
@@ -61,13 +55,8 @@ export default function WebPage() {
       <WebSidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        selectedMonth={selectedMonth}
-        status={currentMonthData.status}
-        isLocked={isLocked}
         cloudSyncStatus={cloudSyncStatus}
         retryCloudSync={retryCloudSync}
-        onLockMonth={lockCurrentMonth}
-        onUnlockMonth={unlockCurrentMonth}
         onLogout={handleLogout}
       />
 
@@ -78,15 +67,12 @@ export default function WebPage() {
             activeTab={activeTab}
             selectedMonth={selectedMonth}
             setSelectedMonth={setSelectedMonth}
-            status={currentMonthData.status}
-            isLocked={isLocked}
             globalToast={globalToast}
           />
 
           {/* Tab Views */}
           {activeTab === "budget" && <BudgetTab />}
           {activeTab === "realization" && <RealizationTab />}
-          {activeTab === "actual" && <ActualTab />}
           {activeTab === "bank-balance" && <BankBalanceTab />}
           {activeTab === "cashflow-items" && (
             <CashflowItemsTab

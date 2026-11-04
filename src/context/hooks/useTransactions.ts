@@ -7,7 +7,7 @@ import { MonthPeriodData } from "../types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 
 interface UseTransactionsOptions {
-  isCurrentMonthLocked: boolean;
+  isCurrentMonthLocked?: boolean;
   cashflowUnits: CashflowUnit[];
   assets: Asset[];
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
@@ -18,7 +18,6 @@ interface UseTransactionsOptions {
 }
 
 export function useTransactions({
-  isCurrentMonthLocked,
   cashflowUnits,
   assets,
   setAssets,
@@ -33,7 +32,6 @@ export function useTransactions({
     tx: Omit<CashflowTransaction, "id" | "created_at">,
     options?: { markSettled?: boolean }
   ) => {
-    if (isCurrentMonthLocked) return;
 
     const newTx: CashflowTransaction = {
       ...tx,
@@ -159,8 +157,6 @@ export function useTransactions({
   };
 
   const deleteTransaction = (txId: string) => {
-    if (isCurrentMonthLocked) return;
-
     const targetTx = transactions.find((t) => t.id === txId);
     if (!targetTx) return;
 
@@ -275,8 +271,6 @@ export function useTransactions({
     data: Partial<Omit<CashflowTransaction, "id" | "created_at">>,
     options?: { markSettled?: boolean }
   ) => {
-    if (isCurrentMonthLocked) return;
-
     const oldTx = transactions.find((t) => t.id === txId);
     if (!oldTx) return;
 

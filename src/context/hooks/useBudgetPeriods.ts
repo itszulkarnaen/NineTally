@@ -31,7 +31,7 @@ export function useBudgetPeriods({
     items: [],
   };
 
-  const isCurrentMonthLocked = currentMonthData.status === "LOCKED";
+  const isCurrentMonthLocked = false;
 
   const getPreviousMonthUnitNominal = (unitId: string): number | null => {
     const sortedMonthKeys = Object.keys(periodsMap)

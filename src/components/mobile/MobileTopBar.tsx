@@ -2,20 +2,13 @@
 
 import React from "react";
 import Image from "next/image";
-import { Lock, CheckCircle2, LogOut } from "lucide-react";
-import { PeriodStatus } from "@/types";
+import { LogOut } from "lucide-react";
 
 interface MobileTopBarProps {
-  status: PeriodStatus;
-  isLocked: boolean;
   onLogout: () => void;
 }
 
-export const MobileTopBar: React.FC<MobileTopBarProps> = ({
-  status,
-  isLocked,
-  onLogout,
-}) => {
+export const MobileTopBar: React.FC<MobileTopBarProps> = ({ onLogout }) => {
   return (
     <div className="sticky top-0 z-40 bg-[#FFFFFF]/90 backdrop-blur border-b border-[#EEEEEE] px-4 py-3 flex items-center justify-between shadow-xs">
       <div className="flex items-center gap-2.5">
@@ -36,18 +29,6 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
-        <span
-          className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
-            isLocked
-              ? "bg-amber-100 text-amber-800 border border-amber-200"
-              : status === "ACTIVE"
-              ? "bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30"
-              : "bg-blue-100 text-blue-800 border border-blue-200"
-          }`}
-        >
-          {isLocked ? <Lock className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
-          {status}
-        </span>
         <button
           onClick={onLogout}
           title="Keluar / Logout"

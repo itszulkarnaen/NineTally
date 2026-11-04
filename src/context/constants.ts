@@ -10,17 +10,17 @@ export const availableMonths: MonthOption[] = [
 ];
 
 export const initialMonthsData: Record<string, MonthPeriodData> = {
-  // Past month: LOCKED
+  // Past month
   "2026-10": {
     period_month: "2026-10",
-    status: "LOCKED",
+    status: "ACTIVE",
     salary_budget: 10000000,
     additional_budget: 0,
     real_bca_balance: 0,
     real_jago_balance: 0,
     items: [],
   },
-  // Current month: ACTIVE
+  // Current month
   "2026-11": {
     period_month: "2026-11",
     status: "ACTIVE",

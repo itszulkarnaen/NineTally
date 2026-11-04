@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { MonthPicker } from "@/components/common/MonthPicker";
 import { formatRupiah } from "@/lib/utils";
-import { Lock, Plus, Check } from "lucide-react";
+import { Plus, Check } from "lucide-react";
 import { CashflowTransaction } from "@/types";
 
 import { MobileTab } from "@/components/mobile/types";
@@ -49,7 +49,6 @@ export default function MobilePage() {
   const [isSuccessToast, setIsSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("Transaksi berhasil dicatat!");
 
-  const isLocked = currentMonthData.status === "LOCKED";
   const budgetItems = currentMonthData.items;
 
   useEffect(() => {
@@ -170,7 +169,6 @@ export default function MobilePage() {
   }, [monthTransactions, cashflowUnits, categories]);
 
   const openTxModal = (preselectedUnitId?: string, defaultType: "EXPENSE" | "INCOME" = "EXPENSE") => {
-    if (isLocked) return;
     setEditingTx(null);
     setTxModalPreselectedUnitId(preselectedUnitId);
     setTxModalDefaultType(defaultType);
@@ -178,7 +176,6 @@ export default function MobilePage() {
   };
 
   const handleEditTransaction = (tx: CashflowTransaction) => {
-    if (isLocked) return;
     setEditingTx(tx);
     setTxModalPreselectedUnitId(undefined);
     setIsTxModalOpen(true);
@@ -227,11 +224,7 @@ export default function MobilePage() {
   return (
     <div className="min-h-screen bg-[#E3F2FD] pb-24 text-[#242921]">
       {/* Top Mobile Bar */}
-      <MobileTopBar
-        status={currentMonthData.status}
-        isLocked={isLocked}
-        onLogout={handleLogout}
-      />
+      <MobileTopBar onLogout={handleLogout} />
 
       <div className="max-w-md mx-auto px-4 pt-3 space-y-4">
         {/* Month Picker */}
@@ -242,16 +235,6 @@ export default function MobilePage() {
             className="w-full justify-center"
           />
         </div>
-
-        {/* Immutability Banner if Locked */}
-        {isLocked && (
-          <div className="bg-amber-100/80 border border-amber-300 rounded-2xl p-3 flex items-center gap-2.5 text-amber-900 text-xs">
-            <Lock className="w-4 h-4 shrink-0 text-amber-700" />
-            <span>
-              <strong>Periode Terkunci (Actual).</strong> Data bulan ini bersifat <em>Read-Only</em> di mobile.
-            </span>
-          </div>
-        )}
 
         {/* 1. Header Balance Cards Carousel & Monthly Cashflow Card */}
         <MobileBalanceCarousel
@@ -273,7 +256,6 @@ export default function MobilePage() {
             budgetItems={budgetItems}
             cashflowUnits={cashflowUnits}
             monthTransactions={monthTransactions}
-            isLocked={isLocked}
             selectedMonth={selectedMonth}
             onOpenTxModal={openTxModal}
             onEditTransaction={handleEditTransaction}
@@ -299,7 +281,7 @@ export default function MobilePage() {
       </div>
 
       {/* Floating Action Button (FAB) for quick logging */}
-      {!isLocked && activeTab === "transactions" && (
+      {activeTab === "transactions" && (
         <button
           onClick={() => openTxModal()}
           className="fixed bottom-6 right-6 w-14 h-14 bg-[#2196F3] hover:bg-[#1E88E5] text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-90 z-30 cursor-pointer"

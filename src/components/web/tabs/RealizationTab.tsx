@@ -64,7 +64,6 @@ export const RealizationTab: React.FC = () => {
   // Modal State
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<BudgetPeriodItem | null>(null);
 
-  const isLocked = currentMonthData.status === "LOCKED";
   const budgetItems = currentMonthData.items;
 
   const prevMonthKey = getPreviousMonthKey(selectedMonth);
@@ -635,7 +634,6 @@ export const RealizationTab: React.FC = () => {
                               e.stopPropagation();
                               toggleItemRealized(item.id);
                             }}
-                            disabled={isLocked}
                             className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border transition flex items-center justify-center gap-1 mx-auto whitespace-nowrap active:scale-95 cursor-pointer ${statusInfo.badgeClass}`}
                             title="Klik untuk ubah status realisasi"
                           >

@@ -20,7 +20,6 @@ interface TransactionsTabProps {
   budgetItems: BudgetPeriodItem[];
   cashflowUnits: CashflowUnit[];
   monthTransactions: CashflowTransaction[];
-  isLocked: boolean;
   selectedMonth: string;
   onOpenTxModal: (preselectedUnitId?: string) => void;
   onEditTransaction: (tx: CashflowTransaction) => void;
@@ -31,7 +30,6 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
   budgetItems,
   cashflowUnits,
   monthTransactions,
-  isLocked,
   selectedMonth,
   onOpenTxModal,
   onEditTransaction,
@@ -229,7 +227,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
                     key={item.id}
                     className={`rounded-2xl border bg-[#FFFFFF] shadow-2xs transition overflow-hidden ${
                       isOver ? "border-rose-200" : "border-[#EEEEEE]"
-                    } ${isLocked ? "opacity-75" : ""}`}
+                    }`}
                   >
                     {/* 1 BARIS DEFAULT SUMMARY (NAMA, PROGRES BAR, ICON EXPAND) */}
                     <button
@@ -342,16 +340,14 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
                             )}
                           </span>
 
-                          {!isLocked && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenTxModal(item.cashflow_unit_id)}
-                              className="px-3 py-1 rounded-xl bg-[#2196F3]/15 hover:bg-[#2196F3]/25 text-[#2196F3] font-bold text-[11px] transition flex items-center gap-1 border border-[#2196F3]/30 active:scale-95 cursor-pointer"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>Catat</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => onOpenTxModal(item.cashflow_unit_id)}
+                            className="px-3 py-1 rounded-xl bg-[#2196F3]/15 hover:bg-[#2196F3]/25 text-[#2196F3] font-bold text-[11px] transition flex items-center gap-1 border border-[#2196F3]/30 active:scale-95 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Catat</span>
+                          </button>
                         </div>
                       </div>
                     )}
@@ -477,24 +473,22 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
                       {isIncome ? `+${formatRupiah(tx.amount)}` : `-${formatRupiah(tx.amount)}`}
                     </span>
 
-                    {!isLocked && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => onEditTransaction(tx)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-[#2196F3] hover:bg-[#E3F2FD] transition cursor-pointer"
-                          title="Edit transaksi ini"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDeleteTransaction(tx.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                          title="Hapus transaksi ini"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onEditTransaction(tx)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-[#2196F3] hover:bg-[#E3F2FD] transition cursor-pointer"
+                        title="Edit transaksi ini"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onDeleteTransaction(tx.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                        title="Hapus transaksi ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

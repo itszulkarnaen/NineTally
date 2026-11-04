@@ -6,7 +6,6 @@ import Image from "next/image";
 import {
   Sliders,
   TrendingUp,
-  CheckCircle2,
   Landmark,
   Layers,
   Tags,
@@ -14,37 +13,23 @@ import {
   Smartphone,
   ArrowRight,
   LogOut,
-  Lock,
-  Unlock,
-  ShieldAlert,
 } from "lucide-react";
 import { NavTab } from "./types";
-import { PeriodStatus } from "@/types";
 import { CloudSyncStatus } from "@/context/AppContext";
 
 interface WebSidebarProps {
   activeTab: NavTab;
   setActiveTab: (tab: NavTab) => void;
-  selectedMonth: string;
-  status: PeriodStatus;
-  isLocked: boolean;
   cloudSyncStatus: CloudSyncStatus;
   retryCloudSync: () => void;
-  onLockMonth: () => void;
-  onUnlockMonth: () => void;
   onLogout: () => void;
 }
 
 export const WebSidebar: React.FC<WebSidebarProps> = ({
   activeTab,
   setActiveTab,
-  selectedMonth,
-  status,
-  isLocked,
   cloudSyncStatus,
   retryCloudSync,
-  onLockMonth,
-  onUnlockMonth,
   onLogout,
 }) => {
   return (
@@ -99,48 +84,6 @@ export const WebSidebar: React.FC<WebSidebarProps> = ({
           </div>
         </div>
 
-        {/* Month Status Badge & Lock/Unlock Trigger */}
-        <div className="p-3.5 bg-[#E3F2FD]/40 rounded-2xl border border-[#EEEEEE] space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[#666E61] font-medium">Bulan:</span>
-            <span className="font-bold text-[#242921]">{selectedMonth}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[#666E61] font-medium">Status:</span>
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
-                isLocked
-                  ? "bg-amber-100 text-amber-800 border border-amber-200"
-                  : status === "ACTIVE"
-                  ? "bg-[#2196F3]/15 text-[#2196F3] border border-[#2196F3]/30"
-                  : "bg-blue-100 text-blue-800 border border-blue-200"
-              }`}
-            >
-              {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-              {status}
-            </span>
-          </div>
-
-          {/* Lock / Unlock Trigger Button */}
-          {isLocked ? (
-            <button
-              onClick={onUnlockMonth}
-              className="w-full mt-1 py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-semibold rounded-xl border border-amber-200 transition flex items-center justify-center gap-1.5"
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-              <span>Unlock (Edit Actual)</span>
-            </button>
-          ) : (
-            <button
-              onClick={onLockMonth}
-              className="w-full mt-1 py-1.5 px-2 bg-[#FFFFFF] hover:bg-[#EEEEEE] text-[#242921] text-[11px] font-medium rounded-xl border border-[#EEEEEE] transition flex items-center justify-center gap-1.5 shadow-xs"
-            >
-              <Lock className="w-3.5 h-3.5 text-[#2196F3]" />
-              <span>Kunci Periode</span>
-            </button>
-          )}
-        </div>
-
         {/* Nav Links: Financial Cycle */}
         <div className="space-y-1">
           <span className="text-[10px] font-bold tracking-wider text-[#666E61] uppercase px-3">
@@ -167,17 +110,6 @@ export const WebSidebar: React.FC<WebSidebarProps> = ({
           >
             <TrendingUp className="w-4 h-4" />
             <span>Realization</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("actual")}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
-              activeTab === "actual"
-                ? "bg-[#2196F3] text-white shadow-xs"
-                : "text-[#666E61] hover:bg-[#EEEEEE] hover:text-[#242921]"
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Actual</span>
           </button>
           <button
             onClick={() => setActiveTab("bank-balance")}

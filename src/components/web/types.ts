@@ -1,7 +1,6 @@
 export type NavTab = 
   | "budget" 
   | "realization" 
-  | "actual" 
   | "bank-balance" 
   | "cashflow-items" 
   | "categories" 
