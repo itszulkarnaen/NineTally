@@ -246,11 +246,6 @@ export const RealizationTab: React.FC = () => {
                   const currentRealization = item.realization_amount ?? item.projection_amount ?? 0;
                   const diff = currentRealization - item.budget_amount;
                   const statusInfo = getFinanceStatus(item);
-                  const itemTxCount = transactions.filter(
-                    (t) =>
-                      t.period_id === (item.period_id || selectedMonth) &&
-                      t.cashflow_unit_id === item.cashflow_unit_id
-                  ).length;
 
                   return (
                     <tr
@@ -260,16 +255,9 @@ export const RealizationTab: React.FC = () => {
                       title="Klik baris untuk melihat rincian riwayat transaksi"
                     >
                       <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-xs text-[#242921] group-hover:text-[#2196F3] transition-colors whitespace-nowrap">
-                            {unit?.name || "Cashflow Item"}
-                          </span>
-                          {itemTxCount > 0 && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-md bg-[#2196F3]/10 text-[#2196F3] border border-[#2196F3]/20">
-                              {itemTxCount} Tx
-                            </span>
-                          )}
-                        </div>
+                        <span className="font-semibold text-xs text-[#242921] group-hover:text-[#2196F3] transition-colors whitespace-nowrap">
+                          {unit?.name || "Cashflow Item"}
+                        </span>
                       </td>
                       <td className="py-2.5 px-3">
                         <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#E3F2FD] text-[#666E61] font-semibold whitespace-nowrap">

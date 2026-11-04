@@ -265,20 +265,18 @@ export const RealizationDetailModal: React.FC<RealizationDetailModalProps> = ({
 
             <div className="bg-[#FFFFFF] p-2.5 rounded-xl border border-[#EEEEEE]">
               <span className="text-[10px] text-[#666E61] font-medium block">Selisih</span>
-              <span
-                className={`font-bold mt-0.5 block text-xs ${
-                  diff > 0
-                    ? "text-rose-600"
-                    : diff < 0 && (currentRealization > 0 || item.is_realized)
-                    ? "text-emerald-600"
-                    : "text-[#666E61]"
-                }`}
-              >
-                {diff > 0
-                  ? `+${formatRupiah(diff)}`
-                  : diff < 0 && (currentRealization > 0 || item.is_realized)
-                  ? `-${formatRupiah(Math.abs(diff))}`
-                  : "Sesuai"}
+              <span className="font-bold mt-0.5 block text-xs">
+                {isOverbudget ? (
+                  <span className="text-rose-600">
+                    {formatRupiah(diff)}
+                  </span>
+                ) : isSettled && diff < 0 ? (
+                  <span className="text-emerald-600">
+                    -{formatRupiah(Math.abs(diff))}
+                  </span>
+                ) : (
+                  <span className="text-[#666E61]">-</span>
+                )}
               </span>
             </div>
           </div>
