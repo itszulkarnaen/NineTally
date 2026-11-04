@@ -64,6 +64,8 @@ export default function WebPage() {
         selectedMonth={selectedMonth}
         status={currentMonthData.status}
         isLocked={isLocked}
+        cloudSyncStatus={cloudSyncStatus}
+        retryCloudSync={retryCloudSync}
         onLockMonth={lockCurrentMonth}
         onUnlockMonth={unlockCurrentMonth}
         onLogout={handleLogout}
@@ -78,8 +80,6 @@ export default function WebPage() {
             setSelectedMonth={setSelectedMonth}
             status={currentMonthData.status}
             isLocked={isLocked}
-            cloudSyncStatus={cloudSyncStatus}
-            retryCloudSync={retryCloudSync}
             globalToast={globalToast}
           />
 

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { NavTab } from "./types";
 import { PeriodStatus } from "@/types";
+import { CloudSyncStatus } from "@/context/AppContext";
 
 interface WebSidebarProps {
   activeTab: NavTab;
@@ -27,6 +28,8 @@ interface WebSidebarProps {
   selectedMonth: string;
   status: PeriodStatus;
   isLocked: boolean;
+  cloudSyncStatus: CloudSyncStatus;
+  retryCloudSync: () => void;
   onLockMonth: () => void;
   onUnlockMonth: () => void;
   onLogout: () => void;
@@ -38,6 +41,8 @@ export const WebSidebar: React.FC<WebSidebarProps> = ({
   selectedMonth,
   status,
   isLocked,
+  cloudSyncStatus,
+  retryCloudSync,
   onLockMonth,
   onUnlockMonth,
   onLogout,
@@ -58,9 +63,38 @@ export const WebSidebar: React.FC<WebSidebarProps> = ({
             />
           </div>
           <div>
-            <h1 className="font-bold text-sm tracking-tight text-[#242921]">
-              NineTally
-            </h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-bold text-sm tracking-tight text-[#242921]">
+                NineTally
+              </h1>
+              <button
+                type="button"
+                onClick={retryCloudSync}
+                title={
+                  cloudSyncStatus === "CONNECTED"
+                    ? "Cloud DB Active — Klik untuk sinkronisasi ulang"
+                    : cloudSyncStatus === "CONNECTING"
+                    ? "Connecting DB..."
+                    : cloudSyncStatus === "OFFLINE"
+                    ? "Offline Mode — Klik untuk coba lagi"
+                    : "DB Error — Klik untuk retry"
+                }
+                aria-label="Status Cloud DB"
+                className="inline-flex items-center justify-center p-1 rounded-full hover:bg-[#EEEEEE] transition cursor-pointer"
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    cloudSyncStatus === "CONNECTED"
+                      ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]"
+                      : cloudSyncStatus === "CONNECTING"
+                      ? "bg-amber-500 animate-pulse"
+                      : cloudSyncStatus === "OFFLINE"
+                      ? "bg-slate-400"
+                      : "bg-rose-500"
+                  }`}
+                />
+              </button>
+            </div>
             <p className="text-[11px] text-[#666E61]">Self Cash Flow Console</p>
           </div>
         </div>
