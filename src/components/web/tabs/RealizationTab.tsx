@@ -609,9 +609,7 @@ export const RealizationTab: React.FC = () => {
                                 : "bg-[#E3F2FD] text-[#666E61]"
                             }`}
                           >
-                            {isRolloverSalary
-                              ? `INCOME (Untuk ${nextMonthKey})`
-                              : unit?.category || unit?.unit_type}
+                            {unit?.category || unit?.unit_type}
                           </span>
                         </td>
                         <td className="py-2.5 px-3">

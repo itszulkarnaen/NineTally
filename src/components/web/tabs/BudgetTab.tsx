@@ -304,11 +304,6 @@ export const BudgetTab: React.FC = () => {
                   <span className="text-[10px] font-medium text-[#666E61] bg-[#F8FAFC] px-2 py-0.5 rounded-lg border border-[#EEEEEE]">
                     {payrollSettings.is_last_day ? "Akhir Bulan" : `Tgl ${payrollSettings.payday_day}`} • {formatRupiah(payrollSettings.monthly_salary)}
                   </span>
-                  {payrollSettings.next_month_allocation && (
-                    <span className="text-[10px] font-semibold text-[#2196F3] bg-[#E3F2FD]/60 px-2 py-0.5 rounded-lg">
-                      Gaji {selectedMonth} → Dipakai {nextMonthKey}
-                    </span>
-                  )}
                   {paydayTxInCurrentMonth && (
                     <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-600" />
@@ -531,19 +526,10 @@ export const BudgetTab: React.FC = () => {
                         >
                           {unit?.category || unit?.unit_type}
                         </span>
-                        {isRolloverSalary && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#2196F3]/15 text-[#2196F3] font-semibold">
-                            Dicatat {selectedMonth} → Dipakai Budget {nextMonthKey}
-                          </span>
-                        )}
                       </div>
                       <span className="text-[10px] text-[#666E61] mt-0.5 block">
                         {isIncome ? (
-                          isRolloverSalary ? (
-                            <>Pemasukan Rutin • Tidak memotong alokasi belanja {selectedMonth}</>
-                          ) : (
-                            <>Pemasukan Tambahan ({selectedMonth})</>
-                          )
+                          <>Pemasukan</>
                         ) : (
                           <>
                             Urgency: <strong>{item.urgency}</strong>
@@ -560,11 +546,7 @@ export const BudgetTab: React.FC = () => {
                           isIncome ? "text-emerald-700 font-semibold" : "text-[#666E61]"
                         }`}
                       >
-                        {isRolloverSalary
-                          ? `Target Gaji (Untuk ${nextMonthKey})`
-                          : isIncome
-                          ? "Target Pemasukan"
-                          : "Budget Plan"}
+                        {isIncome ? "Target Pemasukan" : "Budget Plan"}
                       </span>
                       <CurrencyInput
                         value={item.budget_amount}
