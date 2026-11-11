@@ -32,12 +32,16 @@ export interface CashflowUnit {
 export interface Asset {
   id: string;
   name: string;
+  platform?: string;        // e.g. 'Pluang', 'Bibit', 'Bank Jago', 'BPJS TK'
   liquidity_tier: LiquidityTier;
-  main_value: number;
-  generating_rate: number;
+  main_value: number;       // Modal pokok (Rp)
+  generating_rate: number;  // Yield / Return (%)
   start_date?: string;
-  income_generated: number;
-  total_value: number;
+  income_generated: number; // Imbal hasil / selisih nilai pasar vs modal (Rp)
+  total_value: number;      // Nilai terkini
+  unit_name?: string;       // e.g. 'gram' untuk aset berbasis gramasi/unit
+  unit_quantity?: number;   // Jumlah unit/gramasi (e.g. 5.25)
+  price_per_unit?: number;  // Harga per unit/gram dalam IDR
   goal_bucket?: string;
   is_external?: boolean;
 }

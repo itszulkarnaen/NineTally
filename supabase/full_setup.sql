@@ -28,12 +28,16 @@ CREATE TABLE public.cashflow_categories (
 CREATE TABLE public.assets (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    platform TEXT,
     liquidity_tier TEXT NOT NULL DEFAULT 'LIQUID', -- 'LIQUID', 'SEMI_LIQUID', 'ILLIQUID'
     main_value NUMERIC(15, 2) NOT NULL DEFAULT 0,
     generating_rate NUMERIC(5, 2) DEFAULT 0.00,
     start_date DATE,
     income_generated NUMERIC(15, 2) DEFAULT 0,
     total_value NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    unit_name TEXT,
+    unit_quantity NUMERIC(15, 4),
+    price_per_unit NUMERIC(15, 2),
     goal_bucket TEXT,
     is_external BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()

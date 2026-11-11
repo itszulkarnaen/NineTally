@@ -5,6 +5,28 @@ import { CashflowTransaction, CashflowUnit, Asset } from "@/types";
 import { initialTransactions } from "@/lib/mockData";
 import { MonthPeriodData } from "../types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { computeAssetValues, isUnitBasedAsset } from "@/lib/utils";
+
+function applyAssetAmountDelta(targetAsset: Asset, deltaAmount: number): Partial<Asset> {
+  const newMain = Math.max(0, targetAsset.main_value + deltaAmount);
+  let nextQty = targetAsset.unit_quantity;
+  if (isUnitBasedAsset(targetAsset) && targetAsset.price_per_unit && targetAsset.price_per_unit > 0) {
+    const deltaQty = deltaAmount / targetAsset.price_per_unit;
+    nextQty = Math.max(0, Number(((targetAsset.unit_quantity || 0) + deltaQty).toFixed(4)));
+  }
+  const computed = computeAssetValues({
+    ...targetAsset,
+    main_value: newMain,
+    unit_quantity: nextQty,
+  });
+  return {
+    main_value: newMain,
+    unit_quantity: nextQty,
+    income_generated: computed.income_generated,
+    generating_rate: computed.generating_rate,
+    total_value: computed.total_value,
+  };
+}
 
 interface UseTransactionsOptions {
   isCurrentMonthLocked?: boolean;
@@ -48,19 +70,15 @@ export function useTransactions({
       .reduce((sum, t) => sum + t.amount, 0);
 
     // Auto-sync with linked Asset if unit is ASSET
-    let linkedAssetUpdate: { id: string; main_value: number; total_value: number } | undefined;
+    let linkedAssetUpdate: ({ id: string } & Partial<Asset>) | undefined;
     const unit = cashflowUnits.find((u) => u.id === tx.cashflow_unit_id);
     if (unit?.unit_type === "ASSET" && unit.linked_asset_id) {
       const targetAsset = assets.find((a) => a.id === unit.linked_asset_id);
       if (targetAsset) {
-        const newMain = targetAsset.main_value + tx.amount;
-        linkedAssetUpdate = {
-          id: targetAsset.id,
-          main_value: newMain,
-          total_value: newMain + targetAsset.income_generated,
-        };
+        const patch = applyAssetAmountDelta(targetAsset, tx.amount);
+        linkedAssetUpdate = { id: targetAsset.id, ...patch };
         setAssets((prevAssets) =>
-          prevAssets.map((ast) => (ast.id === targetAsset.id ? { ...ast, ...linkedAssetUpdate } : ast))
+          prevAssets.map((ast) => (ast.id === targetAsset.id ? { ...ast, ...patch } : ast))
         );
       }
     }
@@ -169,19 +187,15 @@ export function useTransactions({
       .reduce((sum, t) => sum + t.amount, 0);
 
     // Revert asset sync if ASSET
-    let linkedAssetUpdate: { id: string; main_value: number; total_value: number } | undefined;
+    let linkedAssetUpdate: ({ id: string } & Partial<Asset>) | undefined;
     const unit = cashflowUnits.find((u) => u.id === targetTx.cashflow_unit_id);
     if (unit?.unit_type === "ASSET" && unit.linked_asset_id) {
       const targetAsset = assets.find((a) => a.id === unit.linked_asset_id);
       if (targetAsset) {
-        const newMain = Math.max(0, targetAsset.main_value - targetTx.amount);
-        linkedAssetUpdate = {
-          id: targetAsset.id,
-          main_value: newMain,
-          total_value: newMain + targetAsset.income_generated,
-        };
+        const patch = applyAssetAmountDelta(targetAsset, -targetTx.amount);
+        linkedAssetUpdate = { id: targetAsset.id, ...patch };
         setAssets((prevAssets) =>
-          prevAssets.map((ast) => (ast.id === targetAsset.id ? { ...ast, ...linkedAssetUpdate } : ast))
+          prevAssets.map((ast) => (ast.id === targetAsset.id ? { ...ast, ...patch } : ast))
         );
       }
     }
@@ -297,35 +311,27 @@ export function useTransactions({
     const newBcaBalance = currentBca + revertOldDelta + applyNewDelta;
 
     // 2. Asset Sync (if old was ASSET or new is ASSET)
-    let linkedAssetUpdate: { id: string; main_value: number; total_value: number } | undefined;
+    let linkedAssetUpdate: ({ id: string } & Partial<Asset>) | undefined;
     if (oldUnit?.unit_type === "ASSET" && oldUnit.linked_asset_id) {
       const oldAsset = assets.find((a) => a.id === oldUnit.linked_asset_id);
       if (oldAsset) {
-        const revertedMain = Math.max(0, oldAsset.main_value - oldTx.amount);
+        const revertPatch = applyAssetAmountDelta(oldAsset, -oldTx.amount);
         setAssets((prev) =>
-          prev.map((a) =>
-            a.id === oldAsset.id
-              ? { ...a, main_value: revertedMain, total_value: revertedMain + a.income_generated }
-              : a
-          )
+          prev.map((a) => (a.id === oldAsset.id ? { ...a, ...revertPatch } : a))
         );
       }
     }
     if (newUnit?.unit_type === "ASSET" && newUnit.linked_asset_id) {
       const newAsset = assets.find((a) => a.id === newUnit.linked_asset_id);
       if (newAsset) {
-        const baseMain =
+        const netDelta =
           oldUnit?.linked_asset_id === newUnit.linked_asset_id
-            ? Math.max(0, newAsset.main_value - oldTx.amount)
-            : newAsset.main_value;
-        const newMain = baseMain + updatedTx.amount;
-        linkedAssetUpdate = {
-          id: newAsset.id,
-          main_value: newMain,
-          total_value: newMain + newAsset.income_generated,
-        };
+            ? updatedTx.amount - oldTx.amount
+            : updatedTx.amount;
+        const patch = applyAssetAmountDelta(newAsset, netDelta);
+        linkedAssetUpdate = { id: newAsset.id, ...patch };
         setAssets((prev) =>
-          prev.map((a) => (a.id === newAsset.id ? { ...a, ...linkedAssetUpdate } : a))
+          prev.map((a) => (a.id === newAsset.id ? { ...a, ...patch } : a))
         );
       }
     }

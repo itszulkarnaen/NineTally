@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Asset, CashflowCategory, CashflowUnit, WishlistItem, CashflowTransaction } from "@/types";
 import { initialAssets, initialCashflowUnits, initialCategories, initialWishlists } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { computeAssetValues } from "@/lib/utils";
 import { MonthPeriodData } from "../types";
 
 interface UseMasterDataOptions {
@@ -323,22 +324,50 @@ export function useMasterData({ broadcastSync, getPeriodsMap, getTransactions }:
   };
 
   // Master Data: Assets CRUD
+  const isMissingColumnError = (err: { code?: string; message?: string }) =>
+    err.code === "42703" ||
+    err.code === "PGRST204" ||
+    Boolean(err.message && (err.message.includes("column") || err.message.includes("schema cache")));
+
+  const persistLocalAssetMeta = (asset: Asset) => {
+    try {
+      const raw = localStorage.getItem("scf_assets_meta");
+      const metaMap = raw ? JSON.parse(raw) : {};
+      metaMap[asset.id] = {
+        platform: asset.platform,
+        unit_name: asset.unit_name,
+        unit_quantity: asset.unit_quantity,
+        price_per_unit: asset.price_per_unit,
+      };
+      localStorage.setItem("scf_assets_meta", JSON.stringify(metaMap));
+    } catch {
+      // ignore localStorage errors
+    }
+  };
+
   const createAsset = async (
     asset: Omit<Asset, "id" | "total_value">
   ): Promise<{ success: boolean; message?: string }> => {
     const cleanName = asset.name.trim();
     if (!cleanName) return { success: false, message: "Nama aset tidak boleh kosong." };
 
+    const computed = computeAssetValues(asset);
     const newAsset: Asset = {
       ...asset,
       id: `ast-${Date.now()}`,
       name: cleanName,
-      total_value: asset.main_value + asset.income_generated,
+      platform: asset.platform?.trim() || undefined,
+      unit_name: asset.unit_name?.trim() || undefined,
+      unit_quantity: asset.unit_name ? Number(asset.unit_quantity) || 0 : undefined,
+      price_per_unit: asset.unit_name ? Number(asset.price_per_unit) || 0 : undefined,
+      income_generated: computed.income_generated,
+      generating_rate: computed.generating_rate,
+      total_value: computed.total_value,
     };
 
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase.from("assets").insert({
+        const corePayload = {
           id: newAsset.id,
           name: newAsset.name,
           liquidity_tier: newAsset.liquidity_tier,
@@ -349,7 +378,22 @@ export function useMasterData({ broadcastSync, getPeriodsMap, getTransactions }:
           total_value: newAsset.total_value,
           goal_bucket: newAsset.goal_bucket || null,
           is_external: newAsset.is_external || false,
-        });
+        };
+
+        const extendedPayload = {
+          ...corePayload,
+          platform: newAsset.platform || null,
+          unit_name: newAsset.unit_name || null,
+          unit_quantity: newAsset.unit_quantity ?? null,
+          price_per_unit: newAsset.price_per_unit ?? null,
+        };
+
+        let { error } = await supabase.from("assets").insert(extendedPayload);
+
+        if (error && isMissingColumnError(error)) {
+          const retryRes = await supabase.from("assets").insert(corePayload);
+          error = retryRes.error;
+        }
 
         if (error) {
           console.error("Supabase insert asset error:", error);
@@ -360,6 +404,7 @@ export function useMasterData({ broadcastSync, getPeriodsMap, getTransactions }:
       }
     }
 
+    persistLocalAssetMeta(newAsset);
     setAssets((prev) => [...prev, newAsset]);
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
     return { success: true };
@@ -372,19 +417,58 @@ export function useMasterData({ broadcastSync, getPeriodsMap, getTransactions }:
     const existing = assets.find((a) => a.id === id);
     if (!existing) return { success: false, message: "Aset tidak ditemukan." };
 
-    const main = assetUpdate.main_value ?? existing.main_value;
-    const inc = assetUpdate.income_generated ?? existing.income_generated;
-    const calculatedTotal = main + inc;
+    const merged: Asset = {
+      ...existing,
+      ...assetUpdate,
+      name: (assetUpdate.name !== undefined ? assetUpdate.name : existing.name).trim(),
+      platform:
+        assetUpdate.platform !== undefined
+          ? assetUpdate.platform?.trim() || undefined
+          : existing.platform,
+      unit_name:
+        assetUpdate.unit_name !== undefined
+          ? assetUpdate.unit_name?.trim() || undefined
+          : existing.unit_name,
+    };
+
+    if (!merged.unit_name) {
+      merged.unit_quantity = undefined;
+      merged.price_per_unit = undefined;
+    }
+
+    const computed = computeAssetValues(merged);
+    merged.total_value = computed.total_value;
+    merged.income_generated = computed.income_generated;
+    merged.generating_rate = computed.generating_rate;
 
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase
-          .from("assets")
-          .update({
-            ...assetUpdate,
-            total_value: calculatedTotal,
-          })
-          .eq("id", id);
+        const corePayload = {
+          name: merged.name,
+          liquidity_tier: merged.liquidity_tier,
+          main_value: merged.main_value,
+          generating_rate: merged.generating_rate,
+          start_date: merged.start_date || null,
+          income_generated: merged.income_generated,
+          total_value: merged.total_value,
+          goal_bucket: merged.goal_bucket || null,
+          is_external: merged.is_external || false,
+        };
+
+        const extendedPayload = {
+          ...corePayload,
+          platform: merged.platform || null,
+          unit_name: merged.unit_name || null,
+          unit_quantity: merged.unit_quantity ?? null,
+          price_per_unit: merged.price_per_unit ?? null,
+        };
+
+        let { error } = await supabase.from("assets").update(extendedPayload).eq("id", id);
+
+        if (error && isMissingColumnError(error)) {
+          const retryRes = await supabase.from("assets").update(corePayload).eq("id", id);
+          error = retryRes.error;
+        }
 
         if (error) {
           console.error("Supabase update asset error:", error);
@@ -395,19 +479,8 @@ export function useMasterData({ broadcastSync, getPeriodsMap, getTransactions }:
       }
     }
 
-    setAssets((prev) =>
-      prev.map((a) => {
-        if (a.id === id) {
-          return {
-            ...a,
-            ...assetUpdate,
-            total_value: calculatedTotal,
-          };
-        }
-        return a;
-      })
-    );
-
+    persistLocalAssetMeta(merged);
+    setAssets((prev) => prev.map((a) => (a.id === id ? merged : a)));
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
     return { success: true };
   };

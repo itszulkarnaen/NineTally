@@ -13,6 +13,69 @@ import {
 } from "@/types";
 import { MonthPeriodData, CloudSyncStatus } from "../types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { computeAssetValues } from "@/lib/utils";
+
+function mapRemoteAssets(rows: Record<string, unknown>[]): Asset[] {
+  let localMetaMap: Record<string, Partial<Asset>> = {};
+  try {
+    const raw = localStorage.getItem("scf_assets_meta");
+    if (raw) localMetaMap = JSON.parse(raw);
+  } catch {
+    // ignore localStorage read failures
+  }
+
+  return rows.map((a) => {
+    const id = String(a.id ?? "");
+    const meta = localMetaMap[id] || {};
+    const platform =
+      a.platform !== undefined && a.platform !== null
+        ? String(a.platform)
+        : meta.platform;
+    const unit_name =
+      a.unit_name !== undefined && a.unit_name !== null
+        ? String(a.unit_name)
+        : meta.unit_name;
+    const unit_quantity =
+      a.unit_quantity !== undefined && a.unit_quantity !== null
+        ? Number(a.unit_quantity)
+        : meta.unit_quantity;
+    const price_per_unit =
+      a.price_per_unit !== undefined && a.price_per_unit !== null
+        ? Number(a.price_per_unit)
+        : meta.price_per_unit;
+
+    const base = {
+      id,
+      name: String(a.name ?? ""),
+      platform: platform || undefined,
+      liquidity_tier: a.liquidity_tier as Asset["liquidity_tier"],
+      main_value: Number(a.main_value) || 0,
+      generating_rate: Number(a.generating_rate) || 0,
+      start_date: a.start_date ? String(a.start_date) : undefined,
+      income_generated: Number(a.income_generated) || 0,
+      unit_name: unit_name || undefined,
+      unit_quantity,
+      price_per_unit,
+      goal_bucket: a.goal_bucket ? String(a.goal_bucket) : undefined,
+      is_external: Boolean(a.is_external),
+    };
+
+    const computed = unit_name
+      ? computeAssetValues(base)
+      : {
+          total_value: Number(a.total_value) || base.main_value + base.income_generated,
+          income_generated: base.income_generated,
+          generating_rate: base.generating_rate,
+        };
+
+    return {
+      ...base,
+      total_value: computed.total_value,
+      income_generated: computed.income_generated,
+      generating_rate: computed.generating_rate,
+    };
+  });
+}
 
 interface UseCloudSyncOptions {
   assets: Asset[];
@@ -245,20 +308,7 @@ export function useCloudSync({
             setCategories(catRes.data);
           }
           if (assetRes.data && assetRes.data.length > 0) {
-            setAssets(
-              assetRes.data.map((a: any) => ({
-                id: a.id,
-                name: a.name,
-                liquidity_tier: a.liquidity_tier,
-                main_value: Number(a.main_value) || 0,
-                generating_rate: Number(a.generating_rate) || 0,
-                start_date: a.start_date || undefined,
-                income_generated: Number(a.income_generated) || 0,
-                total_value: Number(a.total_value) || 0,
-                goal_bucket: a.goal_bucket || undefined,
-                is_external: Boolean(a.is_external),
-              }))
-            );
+            setAssets(mapRemoteAssets(assetRes.data));
           }
           if (unitRes.data && unitRes.data.length > 0) {
             setCashflowUnits(unitRes.data);
@@ -658,7 +708,7 @@ export function useCloudSync({
           if (data) setCategories(data);
         });
         supabase.from("assets").select("*").then(({ data }) => {
-          if (data) setAssets(data);
+          if (data) setAssets(mapRemoteAssets(data));
         });
       }
     });
@@ -737,20 +787,7 @@ export function useCloudSync({
 
       if (catRes.data) setCategories(catRes.data);
       if (assetRes.data) {
-        setAssets(
-          assetRes.data.map((a: any) => ({
-            id: a.id,
-            name: a.name,
-            liquidity_tier: a.liquidity_tier,
-            main_value: Number(a.main_value) || 0,
-            generating_rate: Number(a.generating_rate) || 0,
-            start_date: a.start_date || undefined,
-            income_generated: Number(a.income_generated) || 0,
-            total_value: Number(a.total_value) || 0,
-            goal_bucket: a.goal_bucket || undefined,
-            is_external: Boolean(a.is_external),
-          }))
-        );
+        setAssets(mapRemoteAssets(assetRes.data));
       }
       if (unitRes.data) setCashflowUnits(unitRes.data);
       if (wlRes.data) {
