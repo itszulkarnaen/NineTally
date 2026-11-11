@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { BudgetPeriodItem, CashflowUnit, CashflowTransaction, UrgencyLevel } from "@/types";
 import { TransactionView } from "../types";
+import { ConfirmDeleteModal } from "@/components/common/ConfirmDeleteModal";
 
 interface TransactionsTabProps {
   budgetItems: BudgetPeriodItem[];
@@ -37,6 +38,11 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
 }) => {
   const [transactionView, setTransactionView] = useState<TransactionView>("items");
   const [selectedPosFilter, setSelectedPosFilter] = useState<string>("ALL");
+  const [pendingDeleteTx, setPendingDeleteTx] = useState<{
+    id: string;
+    label: string;
+    amount: number;
+  } | null>(null);
 
   // Search & Infinite Scroll pagination for Cashflow Items
   const [searchQuery, setSearchQuery] = useState("");
@@ -482,7 +488,14 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => onDeleteTransaction(tx.id)}
+                        type="button"
+                        onClick={() =>
+                          setPendingDeleteTx({
+                            id: tx.id,
+                            label: unit?.name || "Transaksi",
+                            amount: tx.amount,
+                          })
+                        }
                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                         title="Hapus transaksi ini"
                       >
@@ -496,6 +509,23 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({
           )}
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDeleteTx)}
+        title="Hapus Transaksi?"
+        message={
+          pendingDeleteTx
+            ? `Yakin mau menghapus transaksi '${pendingDeleteTx.label}' sebesar ${formatRupiah(pendingDeleteTx.amount)}? Saldo bank dan realisasi bulan ini akan disesuaikan kembali.`
+            : ""
+        }
+        onConfirm={() => {
+          if (pendingDeleteTx) {
+            onDeleteTransaction(pendingDeleteTx.id);
+            setPendingDeleteTx(null);
+          }
+        }}
+        onCancel={() => setPendingDeleteTx(null)}
+      />
     </div>
   );
 };

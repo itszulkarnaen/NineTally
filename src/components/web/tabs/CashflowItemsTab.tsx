@@ -5,6 +5,7 @@ import { useApp } from "@/context/AppContext";
 import { Plus, RefreshCw, Pencil, Trash2, X } from "lucide-react";
 import { CashflowUnit, UnitType, ExpenseCategory, UrgencyLevel } from "@/types";
 import { ValidationAlertState } from "../types";
+import { ConfirmDeleteModal } from "@/components/common/ConfirmDeleteModal";
 
 interface CashflowItemsTabProps {
   setValidationAlert: (alert: ValidationAlertState | null) => void;
@@ -35,6 +36,7 @@ export const CashflowItemsTab: React.FC<CashflowItemsTabProps> = ({
   // Edit modal state
   const [editingUnit, setEditingUnit] = useState<CashflowUnit | null>(null);
   const [isSubmittingEditUnit, setIsSubmittingEditUnit] = useState(false);
+  const [pendingDeleteUnit, setPendingDeleteUnit] = useState<CashflowUnit | null>(null);
 
   const handleCreateUnit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,8 +66,11 @@ export const CashflowItemsTab: React.FC<CashflowItemsTabProps> = ({
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleDeleteUnit = async (id: string) => {
+  const confirmDeleteUnit = async () => {
+    if (!pendingDeleteUnit) return;
+    const id = pendingDeleteUnit.id;
     const res = await deleteCashflowUnit(id);
+    setPendingDeleteUnit(null);
     if (!res.success) {
       setValidationAlert({
         title: "Penghapusan Cashflow Item Ditolak",
@@ -276,7 +281,7 @@ export const CashflowItemsTab: React.FC<CashflowItemsTabProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteUnit(u.id)}
+                          onClick={() => setPendingDeleteUnit(u)}
                           className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                           title="Hapus Unit"
                         >
@@ -439,6 +444,18 @@ export const CashflowItemsTab: React.FC<CashflowItemsTabProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDeleteUnit)}
+        title="Hapus Cashflow Item?"
+        message={
+          pendingDeleteUnit
+            ? `Yakin mau menghapus Cashflow Item '${pendingDeleteUnit.name}' (${pendingDeleteUnit.code})?`
+            : ""
+        }
+        onConfirm={confirmDeleteUnit}
+        onCancel={() => setPendingDeleteUnit(null)}
+      />
     </>
   );
 };

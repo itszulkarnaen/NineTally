@@ -5,6 +5,7 @@ import { useApp } from "@/context/AppContext";
 import { Plus, RefreshCw, Pencil, Trash2, X } from "lucide-react";
 import { CashflowCategory } from "@/types";
 import { ValidationAlertState } from "../types";
+import { ConfirmDeleteModal } from "@/components/common/ConfirmDeleteModal";
 
 interface CategoriesTabProps {
   setValidationAlert: (alert: ValidationAlertState | null) => void;
@@ -46,6 +47,7 @@ export const CategoriesTab: React.FC<CategoriesTabProps> = ({
   // Edit modal state
   const [editingCategory, setEditingCategory] = useState<CashflowCategory | null>(null);
   const [isSubmittingEditCat, setIsSubmittingEditCat] = useState(false);
+  const [pendingDeleteCategory, setPendingDeleteCategory] = useState<CashflowCategory | null>(null);
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,8 +82,10 @@ export const CategoriesTab: React.FC<CategoriesTabProps> = ({
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    const res = await deleteCategory(id);
+  const confirmDeleteCategory = async () => {
+    if (!pendingDeleteCategory) return;
+    const res = await deleteCategory(pendingDeleteCategory.id);
+    setPendingDeleteCategory(null);
     if (!res.success) {
       setValidationAlert({
         title: "Penghapusan Kategori Ditolak",
@@ -269,7 +273,7 @@ export const CategoriesTab: React.FC<CategoriesTabProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteCategory(c.id)}
+                            onClick={() => setPendingDeleteCategory(c)}
                             className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                             title="Hapus kategori"
                           >
@@ -394,6 +398,18 @@ export const CategoriesTab: React.FC<CategoriesTabProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDeleteCategory)}
+        title="Hapus Kategori?"
+        message={
+          pendingDeleteCategory
+            ? `Yakin mau menghapus kategori '${pendingDeleteCategory.name}' (${pendingDeleteCategory.code})?`
+            : ""
+        }
+        onConfirm={confirmDeleteCategory}
+        onCancel={() => setPendingDeleteCategory(null)}
+      />
     </>
   );
 };

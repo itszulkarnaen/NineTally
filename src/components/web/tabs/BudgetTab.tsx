@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useApp, getNextMonthKey, getPreviousMonthKey } from "@/context/AppContext";
 import { formatRupiah } from "@/lib/utils";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
+import { ConfirmDeleteModal } from "@/components/common/ConfirmDeleteModal";
 import {
   Sliders,
   CheckCircle2,
@@ -42,6 +43,7 @@ export const BudgetTab: React.FC = () => {
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [isCopiedToast, setIsCopiedToast] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [pendingRemoveItem, setPendingRemoveItem] = useState<{ id: string; name: string } | null>(null);
 
   const prevMonthKey = getPreviousMonthKey(selectedMonth);
   const nextMonthKey = getNextMonthKey(selectedMonth);
@@ -531,7 +533,13 @@ export const BudgetTab: React.FC = () => {
                       />
                     </div>
                     <button
-                      onClick={() => removeItemFromCurrentMonth(item.id)}
+                      type="button"
+                      onClick={() =>
+                        setPendingRemoveItem({
+                          id: item.id,
+                          name: unit?.name || "Pos Anggaran",
+                        })
+                      }
                       className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition mt-3 cursor-pointer"
                       title="Hapus pos ini"
                     >
@@ -611,6 +619,23 @@ export const BudgetTab: React.FC = () => {
           )}
         </div>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingRemoveItem)}
+        title="Hapus Pos Anggaran?"
+        message={
+          pendingRemoveItem
+            ? `Yakin mau menghapus '${pendingRemoveItem.name}' dari daftar anggaran bulan ${selectedMonth}?`
+            : ""
+        }
+        onConfirm={() => {
+          if (pendingRemoveItem) {
+            removeItemFromCurrentMonth(pendingRemoveItem.id);
+            setPendingRemoveItem(null);
+          }
+        }}
+        onCancel={() => setPendingRemoveItem(null)}
+      />
     </div>
   );
 };

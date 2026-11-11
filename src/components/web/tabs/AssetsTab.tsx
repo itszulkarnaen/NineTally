@@ -10,6 +10,7 @@ import {
   sanitizeDecimalInput,
 } from "@/lib/utils";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
+import { ConfirmDeleteModal } from "@/components/common/ConfirmDeleteModal";
 import {
   Plus,
   Pencil,
@@ -71,6 +72,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
   const [editGramQtyInput, setEditGramQtyInput] = useState<string>("0");
   const [editYieldInput, setEditYieldInput] = useState<string>("0");
   const [isSubmittingEditAsset, setIsSubmittingEditAsset] = useState(false);
+  const [pendingDeleteAsset, setPendingDeleteAsset] = useState<Asset | null>(null);
 
   // Close modals on Escape
   useEffect(() => {
@@ -260,12 +262,15 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleDeleteAsset = async (id: string) => {
-    const res = await deleteAsset(id);
+  const confirmDeleteAsset = async () => {
+    if (!pendingDeleteAsset) return;
+    const targetId = pendingDeleteAsset.id;
+    const res = await deleteAsset(targetId);
+    setPendingDeleteAsset(null);
     if (!res.success) {
       setValidationAlert({
         title: "Penghapusan Aset Ditolak",
-        message: res.message || "Aset tidak dapat dihapus karena masih terhubung dengan Cashflow Item.",
+        message: res.message || "Aset tidak dapat dihapus karena masih memiliki transaksi aktif.",
       });
     } else {
       setToast("Aset berhasil dihapus.");
@@ -548,7 +553,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteAsset(ast.id)}
+                          onClick={() => setPendingDeleteAsset(ast)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                           title="Hapus Aset"
                         >
@@ -1052,6 +1057,18 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDeleteAsset)}
+        title="Hapus Aset Portofolio?"
+        message={
+          pendingDeleteAsset
+            ? `Yakin mau menghapus aset '${pendingDeleteAsset.name}'? Tautan Cashflow Item yang belum memiliki transaksi akan otomatis dilepas.`
+            : ""
+        }
+        onConfirm={confirmDeleteAsset}
+        onCancel={() => setPendingDeleteAsset(null)}
+      />
     </div>
   );
 };
