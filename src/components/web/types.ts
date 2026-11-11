@@ -2,6 +2,7 @@ export type NavTab =
   | "budget" 
   | "realization" 
   | "bank-balance" 
+  | "self-loan"
   | "cashflow-items" 
   | "categories" 
   | "assets";

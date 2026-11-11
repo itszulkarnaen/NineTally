@@ -14,6 +14,7 @@ import { MobileNavTabs } from "@/components/mobile/MobileNavTabs";
 import { TransactionsTab } from "@/components/mobile/tabs/TransactionsTab";
 import { ChartTab } from "@/components/mobile/tabs/ChartTab";
 import { AssetsMobileTab } from "@/components/mobile/tabs/AssetsMobileTab";
+import { SelfLoanMobileTab } from "@/components/mobile/tabs/SelfLoanMobileTab";
 import { WishlistTab } from "@/components/mobile/tabs/WishlistTab";
 import { RecordTransactionModal } from "@/components/mobile/modals/RecordTransactionModal";
 import { BankBalanceModal } from "@/components/mobile/modals/BankBalanceModal";
@@ -271,6 +272,16 @@ export default function MobilePage() {
         )}
 
         {activeTab === "assets" && <AssetsMobileTab assets={assets} />}
+
+        {activeTab === "loan" && (
+          <SelfLoanMobileTab
+            onShowToast={(msg) => {
+              setToastMessage(msg);
+              setIsSuccessToast(true);
+              setTimeout(() => setIsSuccessToast(false), 3000);
+            }}
+          />
+        )}
 
         {activeTab === "wishlist" && (
           <WishlistTab

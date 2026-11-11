@@ -8,6 +8,7 @@ import { useMasterData } from "./hooks/useMasterData";
 import { useBudgetPeriods } from "./hooks/useBudgetPeriods";
 import { useTransactions } from "./hooks/useTransactions";
 import { usePayrollEngine } from "./hooks/usePayrollEngine";
+import { useSelfLoans } from "./hooks/useSelfLoans";
 import { useCloudSync } from "./hooks/useCloudSync";
 
 // Re-export types and constants for 100% backwards compatibility
@@ -57,6 +58,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isLoaded: false, // Updated dynamically by cloudSync below
   });
 
+  // 4b. Self-Loan Hook (Pinjam ke Diri Sendiri & Cicil Balik ke Aset)
+  const selfLoansHook = useSelfLoans({
+    assets: masterData.assets,
+    updateAsset: masterData.updateAsset,
+    currentMonthData: budgetPeriods.currentMonthData,
+    updateBankBalance: budgetPeriods.updateBankBalance,
+    broadcastSync: (payload) => broadcastSyncRef.current(payload),
+  });
+
   // 5. Cloud Sync Hook (Supabase Realtime, Postgres CDC, LocalStorage persistence)
   const cloudSync = useCloudSync({
     assets: masterData.assets,
@@ -74,6 +84,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     selectedMonth: budgetPeriods.selectedMonth,
     setSelectedMonth: budgetPeriods.setSelectedMonth,
     setPayrollSettings: payroll.setPayrollSettings,
+    selfLoans: selfLoansHook.selfLoans,
+    setSelfLoans: selfLoansHook.setSelfLoans,
+    selfLoanPayments: selfLoansHook.selfLoanPayments,
+    setSelfLoanPayments: selfLoansHook.setSelfLoanPayments,
   });
 
   // Connect broadcastSync to cloudSync
@@ -149,6 +163,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     categories: masterData.categories,
     wishlists: masterData.wishlists,
     transactions: transactionsHook.transactions,
+    selfLoans: selfLoansHook.selfLoans,
+    selfLoanPayments: selfLoansHook.selfLoanPayments,
 
     // Cloud Sync
     cloudSyncStatus: cloudSync.cloudSyncStatus,
@@ -198,6 +214,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateAsset: masterData.updateAsset,
     deleteAsset: masterData.deleteAsset,
     toggleWishlistBought: masterData.toggleWishlistBought,
+
+    // Self-Loan Actions
+    createSelfLoan: selfLoansHook.createSelfLoan,
+    repaySelfLoan: selfLoansHook.repaySelfLoan,
+    deleteSelfLoan: selfLoansHook.deleteSelfLoan,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

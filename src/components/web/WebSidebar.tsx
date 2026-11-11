@@ -10,6 +10,7 @@ import {
   Layers,
   Tags,
   Wallet,
+  HandCoins,
   Smartphone,
   ArrowRight,
   LogOut,
@@ -121,6 +122,17 @@ export const WebSidebar: React.FC<WebSidebarProps> = ({
           >
             <Landmark className="w-4 h-4" />
             <span>Bank Balance</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("self-loan")}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+              activeTab === "self-loan"
+                ? "bg-[#2196F3] text-white shadow-xs"
+                : "text-[#666E61] hover:bg-[#EEEEEE] hover:text-[#242921]"
+            }`}
+          >
+            <HandCoins className="w-4 h-4" />
+            <span>Self-Loan</span>
           </button>
         </div>
 

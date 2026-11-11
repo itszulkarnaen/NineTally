@@ -126,3 +126,113 @@ export function getAssetDeletionBlocker(
   };
 }
 
+/**
+ * Compute asset field updates when liquidating/borrowing a principal amount via Self-Loan.
+ */
+export function applyAssetLoanDisbursement(
+  asset: Asset,
+  amount: number
+): { patch: Partial<Asset>; unitsSold?: number } {
+  if (isUnitBasedAsset(asset)) {
+    const unitPrice =
+      asset.price_per_unit && asset.price_per_unit > 0
+        ? asset.price_per_unit
+        : asset.unit_quantity && asset.unit_quantity > 0
+        ? asset.total_value / asset.unit_quantity
+        : 0;
+    const unitsSold = unitPrice > 0 ? Number((amount / unitPrice).toFixed(4)) : 0;
+    const nextQty = Math.max(0, Number(((asset.unit_quantity || 0) - unitsSold).toFixed(4)));
+    const ratio = asset.total_value > 0 ? Math.min(1, amount / asset.total_value) : 1;
+    const nextMain =
+      amount >= asset.total_value
+        ? 0
+        : Math.max(0, Math.round(asset.main_value * (1 - ratio)));
+    const computed = computeAssetValues({
+      main_value: nextMain,
+      income_generated: asset.income_generated,
+      generating_rate: asset.generating_rate,
+      unit_name: asset.unit_name,
+      unit_quantity: nextQty,
+      price_per_unit: asset.price_per_unit,
+    });
+    return {
+      patch: {
+        main_value: nextMain,
+        unit_quantity: nextQty,
+        ...computed,
+      },
+      unitsSold,
+    };
+  }
+
+  const deductMain = Math.min(asset.main_value, amount);
+  const deductIncome = Math.max(0, amount - deductMain);
+  const nextMain = Math.max(0, asset.main_value - deductMain);
+  const nextIncome = Math.max(0, asset.income_generated - deductIncome);
+  const nextRate =
+    nextMain > 0 && nextIncome !== 0
+      ? Number(((nextIncome / nextMain) * 100).toFixed(2))
+      : nextIncome === 0
+      ? 0
+      : asset.generating_rate;
+  const computed = computeAssetValues({
+    main_value: nextMain,
+    income_generated: nextIncome,
+    generating_rate: nextRate,
+  });
+  return {
+    patch: {
+      main_value: nextMain,
+      ...computed,
+    },
+  };
+}
+
+/**
+ * Compute asset field updates when repaying a Self-Loan back into its source asset.
+ */
+export function applyAssetLoanRepayment(
+  asset: Asset,
+  amount: number
+): { patch: Partial<Asset>; unitsRestored?: number } {
+  if (isUnitBasedAsset(asset)) {
+    const unitPrice = asset.price_per_unit && asset.price_per_unit > 0 ? asset.price_per_unit : 0;
+    const unitsRestored = unitPrice > 0 ? Number((amount / unitPrice).toFixed(4)) : 0;
+    const nextQty = Number(((asset.unit_quantity || 0) + unitsRestored).toFixed(4));
+    const nextMain = asset.main_value + amount;
+    const computed = computeAssetValues({
+      main_value: nextMain,
+      income_generated: asset.income_generated,
+      generating_rate: asset.generating_rate,
+      unit_name: asset.unit_name,
+      unit_quantity: nextQty,
+      price_per_unit: asset.price_per_unit,
+    });
+    return {
+      patch: {
+        main_value: nextMain,
+        unit_quantity: nextQty,
+        ...computed,
+      },
+      unitsRestored,
+    };
+  }
+
+  const nextMain = asset.main_value + amount;
+  const nextRate =
+    nextMain > 0 && asset.income_generated !== 0
+      ? Number(((asset.income_generated / nextMain) * 100).toFixed(2))
+      : asset.generating_rate;
+  const computed = computeAssetValues({
+    main_value: nextMain,
+    income_generated: asset.income_generated,
+    generating_rate: nextRate,
+  });
+  return {
+    patch: {
+      main_value: nextMain,
+      ...computed,
+    },
+  };
+}
+

@@ -7,6 +7,9 @@ import {
   WishlistItem,
   PeriodStatus,
   PayrollSettings,
+  SelfLoan,
+  SelfLoanPayment,
+  SelfLoanTargetBank,
 } from "@/types";
 
 export interface MonthPeriodData {
@@ -33,6 +36,8 @@ export interface AppContextType {
   categories: CashflowCategory[];
   wishlists: WishlistItem[];
   transactions: CashflowTransaction[];
+  selfLoans: SelfLoan[];
+  selfLoanPayments: SelfLoanPayment[];
 
   // Cloud Sync & Realtime Status
   cloudSyncStatus: CloudSyncStatus;
@@ -95,4 +100,23 @@ export interface AppContextType {
   updateAsset: (id: string, asset: Partial<Asset>) => Promise<{ success: boolean; message?: string }>;
   deleteAsset: (id: string) => Promise<{ success: boolean; message?: string }>;
   toggleWishlistBought: (wishlistId: string) => void;
+
+  // Actions: Self-Loan (Borrow from & Repay Own Assets)
+  createSelfLoan: (input: {
+    asset_id: string;
+    title: string;
+    principal_amount: number;
+    target_bank: SelfLoanTargetBank;
+    loan_date: string;
+    due_date?: string;
+    notes?: string;
+  }) => Promise<{ success: boolean; message?: string }>;
+  repaySelfLoan: (input: {
+    loan_id: string;
+    amount: number;
+    source_bank: SelfLoanTargetBank;
+    payment_date: string;
+    notes?: string;
+  }) => Promise<{ success: boolean; message?: string }>;
+  deleteSelfLoan: (id: string) => Promise<{ success: boolean; message?: string }>;
 }

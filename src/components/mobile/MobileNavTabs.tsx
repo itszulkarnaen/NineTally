@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Receipt, PieChart as PieChartIcon, Layers, Gift } from "lucide-react";
+import { Receipt, PieChart as PieChartIcon, Layers, HandCoins, Gift } from "lucide-react";
 import { MobileTab } from "./types";
 
 interface MobileNavTabsProps {
@@ -14,10 +14,10 @@ export const MobileNavTabs: React.FC<MobileNavTabsProps> = ({
   setActiveTab,
 }) => {
   return (
-    <div className="grid grid-cols-4 gap-1 p-1 bg-[#FFFFFF] border border-[#EEEEEE] rounded-2xl shadow-xs">
+    <div className="grid grid-cols-5 gap-1 p-1 bg-[#FFFFFF] border border-[#EEEEEE] rounded-2xl shadow-xs">
       <button
         onClick={() => setActiveTab("transactions")}
-        className={`py-2 text-xs font-semibold rounded-xl flex flex-col items-center gap-1 transition cursor-pointer ${
+        className={`py-2 text-[11px] font-semibold rounded-xl flex flex-col items-center gap-1 transition cursor-pointer ${
           activeTab === "transactions" ? "bg-[#2196F3] text-white shadow-xs" : "text-[#666E61]"
         }`}
       >
@@ -26,7 +26,7 @@ export const MobileNavTabs: React.FC<MobileNavTabsProps> = ({
       </button>
       <button
         onClick={() => setActiveTab("chart")}
-        className={`py-2 text-xs font-semibold rounded-xl flex flex-col items-center gap-1 transition cursor-pointer ${
+        className={`py-2 text-[11px] font-semibold rounded-xl flex flex-col items-center gap-1 transition cursor-pointer ${
           activeTab === "chart" ? "bg-[#2196F3] text-white shadow-xs" : "text-[#666E61]"
         }`}
       >
@@ -35,7 +35,7 @@ export const MobileNavTabs: React.FC<MobileNavTabsProps> = ({
       </button>
       <button
         onClick={() => setActiveTab("assets")}
-        className={`py-2 text-xs font-semibold rounded-xl flex flex-col items-center gap-1 transition cursor-pointer ${
+        className={`py-2 text-[11px] font-semibold rounded-xl flex flex-col items-center gap-1 transition cursor-pointer ${
           activeTab === "assets" ? "bg-[#2196F3] text-white shadow-xs" : "text-[#666E61]"
         }`}
       >
@@ -43,8 +43,17 @@ export const MobileNavTabs: React.FC<MobileNavTabsProps> = ({
         <span>Aset</span>
       </button>
       <button
+        onClick={() => setActiveTab("loan")}
+        className={`py-2 text-[11px] font-semibold rounded-xl flex flex-col items-center gap-1 transition cursor-pointer ${
+          activeTab === "loan" ? "bg-[#2196F3] text-white shadow-xs" : "text-[#666E61]"
+        }`}
+      >
+        <HandCoins className="w-4 h-4" />
+        <span>Loan</span>
+      </button>
+      <button
         onClick={() => setActiveTab("wishlist")}
-        className={`py-2 text-xs font-semibold rounded-xl flex flex-col items-center gap-1 transition cursor-pointer ${
+        className={`py-2 text-[11px] font-semibold rounded-xl flex flex-col items-center gap-1 transition cursor-pointer ${
           activeTab === "wishlist" ? "bg-[#2196F3] text-white shadow-xs" : "text-[#666E61]"
         }`}
       >

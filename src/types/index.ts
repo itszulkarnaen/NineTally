@@ -102,4 +102,36 @@ export interface PayrollSettings {
   last_posted_period?: string; // e.g. '2026-11'
 }
 
+export type SelfLoanStatus = 'ACTIVE' | 'PAID';
+export type SelfLoanTargetBank = 'BCA' | 'JAGO';
+
+export interface SelfLoan {
+  id: string;
+  asset_id: string;
+  asset_name: string;
+  title: string;
+  principal_amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  disbursed_units?: number;
+  returned_units?: number;
+  target_bank: SelfLoanTargetBank;
+  status: SelfLoanStatus;
+  loan_date: string; // YYYY-MM-DD
+  due_date?: string; // YYYY-MM-DD
+  notes?: string;
+  created_at?: string;
+}
+
+export interface SelfLoanPayment {
+  id: string;
+  loan_id: string;
+  amount: number;
+  units_restored?: number;
+  source_bank: SelfLoanTargetBank;
+  payment_date: string; // YYYY-MM-DD
+  notes?: string;
+  created_at?: string;
+}
+
 

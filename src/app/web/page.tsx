@@ -11,6 +11,7 @@ import { BankBalanceTab } from "@/components/web/tabs/BankBalanceTab";
 import { CashflowItemsTab } from "@/components/web/tabs/CashflowItemsTab";
 import { CategoriesTab } from "@/components/web/tabs/CategoriesTab";
 import { AssetsTab } from "@/components/web/tabs/AssetsTab";
+import { SelfLoanTab } from "@/components/web/tabs/SelfLoanTab";
 import { ValidationAlertModal } from "@/components/web/modals/ValidationAlertModal";
 import { CashflowUnit } from "@/types";
 
@@ -74,6 +75,12 @@ export default function WebPage() {
           {activeTab === "budget" && <BudgetTab />}
           {activeTab === "realization" && <RealizationTab />}
           {activeTab === "bank-balance" && <BankBalanceTab />}
+          {activeTab === "self-loan" && (
+            <SelfLoanTab
+              setValidationAlert={setValidationAlert}
+              setToast={setGlobalToast}
+            />
+          )}
           {activeTab === "cashflow-items" && (
             <CashflowItemsTab
               setValidationAlert={setValidationAlert}

@@ -4,6 +4,8 @@
 -- ==============================================================================
 
 -- 1. DROP EXISTING TABLES (JIKA ADA) AGAR FRESH & CLEAN
+DROP TABLE IF EXISTS public.self_loan_payments CASCADE;
+DROP TABLE IF EXISTS public.self_loans CASCADE;
 DROP TABLE IF EXISTS public.cashflow_transactions CASCADE;
 DROP TABLE IF EXISTS public.budget_period_items CASCADE;
 DROP TABLE IF EXISTS public.budget_periods CASCADE;
@@ -106,6 +108,37 @@ CREATE TABLE public.wishlists (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 2.8 Self-Loans (Pinjam ke Diri Sendiri dari Aset)
+CREATE TABLE public.self_loans (
+    id TEXT PRIMARY KEY,
+    asset_id TEXT REFERENCES public.assets(id) ON DELETE SET NULL,
+    asset_name TEXT NOT NULL,
+    title TEXT NOT NULL,
+    principal_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    paid_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    remaining_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    disbursed_units NUMERIC(15, 4),
+    returned_units NUMERIC(15, 4),
+    target_bank TEXT NOT NULL DEFAULT 'BCA',
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    loan_date DATE NOT NULL,
+    due_date DATE,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2.9 Self-Loan Payments (Cicilan / Pelunasan Balik ke Aset)
+CREATE TABLE public.self_loan_payments (
+    id TEXT PRIMARY KEY,
+    loan_id TEXT NOT NULL REFERENCES public.self_loans(id) ON DELETE CASCADE,
+    amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    units_restored NUMERIC(15, 4),
+    source_bank TEXT NOT NULL DEFAULT 'BCA',
+    payment_date DATE NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 3. GRANT PERMISSIONS & ROW LEVEL SECURITY (RLS) POLICIES
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
@@ -139,6 +172,14 @@ CREATE POLICY "allow_all_transactions" ON public.cashflow_transactions FOR ALL T
 ALTER TABLE public.wishlists ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "allow_all_wishlists" ON public.wishlists;
 CREATE POLICY "allow_all_wishlists" ON public.wishlists FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.self_loans ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_self_loans" ON public.self_loans;
+CREATE POLICY "allow_all_self_loans" ON public.self_loans FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.self_loan_payments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_self_loan_payments" ON public.self_loan_payments;
+CREATE POLICY "allow_all_self_loan_payments" ON public.self_loan_payments FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- 4. SEED INITIAL DATA
 
@@ -241,6 +282,8 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.cashflow_units;
     ALTER PUBLICATION supabase_realtime ADD TABLE public.assets;
     ALTER PUBLICATION supabase_realtime ADD TABLE public.cashflow_categories;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.self_loans;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.self_loan_payments;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
     WHEN others THEN NULL;

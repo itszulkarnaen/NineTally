@@ -10,6 +10,10 @@ import {
   CashflowUnit,
   WishlistItem,
   PayrollSettings,
+  SelfLoan,
+  SelfLoanPayment,
+  SelfLoanStatus,
+  SelfLoanTargetBank,
 } from "@/types";
 import { MonthPeriodData, CloudSyncStatus } from "../types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
@@ -77,6 +81,48 @@ function mapRemoteAssets(rows: Record<string, unknown>[]): Asset[] {
   });
 }
 
+function mapRemoteSelfLoans(rows: Record<string, unknown>[]): SelfLoan[] {
+  return rows.map((l) => ({
+    id: String(l.id ?? ""),
+    asset_id: String(l.asset_id ?? ""),
+    asset_name: String(l.asset_name ?? ""),
+    title: String(l.title ?? ""),
+    principal_amount: Number(l.principal_amount) || 0,
+    paid_amount: Number(l.paid_amount) || 0,
+    remaining_amount: Number(l.remaining_amount) || 0,
+    disbursed_units:
+      l.disbursed_units !== undefined && l.disbursed_units !== null
+        ? Number(l.disbursed_units)
+        : undefined,
+    returned_units:
+      l.returned_units !== undefined && l.returned_units !== null
+        ? Number(l.returned_units)
+        : undefined,
+    target_bank: (l.target_bank as SelfLoanTargetBank) || "BCA",
+    status: (l.status as SelfLoanStatus) || "ACTIVE",
+    loan_date: String(l.loan_date ?? ""),
+    due_date: l.due_date ? String(l.due_date) : undefined,
+    notes: l.notes ? String(l.notes) : undefined,
+    created_at: l.created_at ? String(l.created_at) : undefined,
+  }));
+}
+
+function mapRemoteSelfLoanPayments(rows: Record<string, unknown>[]): SelfLoanPayment[] {
+  return rows.map((p) => ({
+    id: String(p.id ?? ""),
+    loan_id: String(p.loan_id ?? ""),
+    amount: Number(p.amount) || 0,
+    units_restored:
+      p.units_restored !== undefined && p.units_restored !== null
+        ? Number(p.units_restored)
+        : undefined,
+    source_bank: (p.source_bank as SelfLoanTargetBank) || "BCA",
+    payment_date: String(p.payment_date ?? ""),
+    notes: p.notes ? String(p.notes) : undefined,
+    created_at: p.created_at ? String(p.created_at) : undefined,
+  }));
+}
+
 interface UseCloudSyncOptions {
   assets: Asset[];
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
@@ -93,6 +139,10 @@ interface UseCloudSyncOptions {
   selectedMonth: string;
   setSelectedMonth: React.Dispatch<React.SetStateAction<string>>;
   setPayrollSettings: React.Dispatch<React.SetStateAction<PayrollSettings>>;
+  selfLoans: SelfLoan[];
+  setSelfLoans: React.Dispatch<React.SetStateAction<SelfLoan[]>>;
+  selfLoanPayments: SelfLoanPayment[];
+  setSelfLoanPayments: React.Dispatch<React.SetStateAction<SelfLoanPayment[]>>;
 }
 
 export function useCloudSync({
@@ -111,6 +161,10 @@ export function useCloudSync({
   selectedMonth,
   setSelectedMonth,
   setPayrollSettings,
+  selfLoans,
+  setSelfLoans,
+  selfLoanPayments,
+  setSelfLoanPayments,
 }: UseCloudSyncOptions) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>(
@@ -266,6 +320,11 @@ export function useCloudSync({
         if (savedCategories) setCategories(JSON.parse(savedCategories));
         if (savedWishlists) setWishlists(JSON.parse(savedWishlists));
         if (savedMonth) setSelectedMonth(savedMonth);
+
+        const savedLoans = localStorage.getItem("scf_self_loans");
+        const savedLoanPayments = localStorage.getItem("scf_self_loan_payments");
+        if (savedLoans) setSelfLoans(JSON.parse(savedLoans));
+        if (savedLoanPayments) setSelfLoanPayments(JSON.parse(savedLoanPayments));
       } catch (e) {
         console.error("Failed to load local storage state", e);
       } finally {
@@ -277,7 +336,7 @@ export function useCloudSync({
         console.warn("⚠️ NineTally: Supabase env vars not found or incomplete. Running in offline/localStorage mode.");
       } else {
         try {
-          const [catRes, assetRes, unitRes, periodRes, itemRes, txRes, wlRes, payrollRes] = await Promise.all([
+          const [catRes, assetRes, unitRes, periodRes, itemRes, txRes, wlRes, payrollRes, loansRes, loanPayRes] = await Promise.all([
             supabase.from("cashflow_categories").select("*").order("sort_order", { ascending: true }),
             supabase.from("assets").select("*"),
             supabase.from("cashflow_units").select("*").order("code", { ascending: true }),
@@ -286,9 +345,18 @@ export function useCloudSync({
             supabase.from("cashflow_transactions").select("*").order("date", { ascending: false }),
             supabase.from("wishlists").select("*").order("priority", { ascending: true }),
             supabase.from("payroll_settings").select("*").eq("id", "default").maybeSingle(),
+            supabase.from("self_loans").select("*").order("created_at", { ascending: false }),
+            supabase.from("self_loan_payments").select("*").order("created_at", { ascending: false }),
           ]);
 
           if (!isMounted) return;
+
+          if (!loansRes.error && loansRes.data) {
+            setSelfLoans(mapRemoteSelfLoans(loansRes.data as Record<string, unknown>[]));
+          }
+          if (!loanPayRes.error && loanPayRes.data) {
+            setSelfLoanPayments(mapRemoteSelfLoanPayments(loanPayRes.data as Record<string, unknown>[]));
+          }
 
           if (payrollRes.data) {
             const p = payrollRes.data;
@@ -412,10 +480,12 @@ export function useCloudSync({
       localStorage.setItem("scf_transactions", JSON.stringify(transactions));
       localStorage.setItem("scf_periods_map", JSON.stringify(periodsMap));
       localStorage.setItem("scf_selected_month", selectedMonth);
+      localStorage.setItem("scf_self_loans", JSON.stringify(selfLoans));
+      localStorage.setItem("scf_self_loan_payments", JSON.stringify(selfLoanPayments));
     } catch (e) {
       console.error("Failed to save local storage state", e);
     }
-  }, [isLoaded, assets, cashflowUnits, categories, wishlists, transactions, periodsMap, selectedMonth]);
+  }, [isLoaded, assets, cashflowUnits, categories, wishlists, transactions, periodsMap, selectedMonth, selfLoans, selfLoanPayments]);
 
   // Realtime WebSocket Sync
   useEffect(() => {
@@ -711,6 +781,25 @@ export function useCloudSync({
           if (data) setAssets(mapRemoteAssets(data));
         });
       }
+
+      if (payload.type === "SELF_LOAN_CHANGED") {
+        supabase
+          .from("self_loans")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .then(({ data, error }) => {
+            if (!error && data) setSelfLoans(mapRemoteSelfLoans(data as Record<string, unknown>[]));
+          });
+        supabase
+          .from("self_loan_payments")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .then(({ data, error }) => {
+            if (!error && data) {
+              setSelfLoanPayments(mapRemoteSelfLoanPayments(data as Record<string, unknown>[]));
+            }
+          });
+      }
     });
 
     channel
@@ -760,7 +849,7 @@ export function useCloudSync({
     setCloudSyncStatus("CONNECTING");
 
     try {
-      const [catRes, assetRes, unitRes, periodRes, itemRes, txRes, wlRes, payrollRes] = await Promise.all([
+      const [catRes, assetRes, unitRes, periodRes, itemRes, txRes, wlRes, payrollRes, loansRes, loanPayRes] = await Promise.all([
         supabase.from("cashflow_categories").select("*").order("sort_order", { ascending: true }),
         supabase.from("assets").select("*"),
         supabase.from("cashflow_units").select("*").order("code", { ascending: true }),
@@ -769,7 +858,16 @@ export function useCloudSync({
         supabase.from("cashflow_transactions").select("*").order("date", { ascending: false }),
         supabase.from("wishlists").select("*").order("priority", { ascending: true }),
         supabase.from("payroll_settings").select("*").eq("id", "default").maybeSingle(),
+        supabase.from("self_loans").select("*").order("created_at", { ascending: false }),
+        supabase.from("self_loan_payments").select("*").order("created_at", { ascending: false }),
       ]);
+
+      if (!loansRes.error && loansRes.data) {
+        setSelfLoans(mapRemoteSelfLoans(loansRes.data as Record<string, unknown>[]));
+      }
+      if (!loanPayRes.error && loanPayRes.data) {
+        setSelfLoanPayments(mapRemoteSelfLoanPayments(loanPayRes.data as Record<string, unknown>[]));
+      }
 
       if (payrollRes.data) {
         const p = payrollRes.data;
