@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Asset, CashflowCategory, CashflowUnit, WishlistItem, CashflowTransaction } from "@/types";
 import { initialAssets, initialCashflowUnits, initialCategories, initialWishlists } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { computeAssetValues } from "@/lib/utils";
+import { computeAssetValues, getAssetDeletionBlocker } from "@/lib/utils";
 import { MonthPeriodData } from "../types";
 
 interface UseMasterDataOptions {
@@ -485,21 +485,44 @@ export function useMasterData({ broadcastSync, getPeriodsMap, getTransactions }:
     return { success: true };
   };
 
+  const removeLocalAssetMeta = (id: string) => {
+    try {
+      const raw = localStorage.getItem("scf_assets_meta");
+      if (!raw) return;
+      const metaMap = JSON.parse(raw);
+      delete metaMap[id];
+      localStorage.setItem("scf_assets_meta", JSON.stringify(metaMap));
+    } catch {
+      // ignore localStorage errors
+    }
+  };
+
   const deleteAsset = async (id: string): Promise<{ success: boolean; message?: string }> => {
     const target = assets.find((a) => a.id === id);
     if (!target) return { success: false, message: "Aset tidak ditemukan." };
 
-    const linkedUnits = cashflowUnits.filter((u) => u.linked_asset_id === id);
-    if (linkedUnits.length > 0) {
-      const names = linkedUnits.map((u) => u.name).join(", ");
+    const guard = getAssetDeletionBlocker(id, cashflowUnits, getTransactions());
+    if (guard.blocked) {
+      const unitNames = guard.linkedUnitNames.join(", ");
       return {
         success: false,
-        message: `Gak bisa dihapus bro! Aset '${target.name}' terhubung dengan Cashflow Item (${names}). Putus tautan aset pada cashflow item tersebut terlebih dahulu.`,
+        message: `Gak bisa dihapus bro! Aset '${target.name}' masih punya ${guard.inflowCount} transaksi masuk (${unitNames}) tanpa transaksi keluar/pencairan.`,
       };
     }
 
     if (isSupabaseConfigured) {
       try {
+        if (guard.linkedUnitNames.length > 0) {
+          const { error: unlinkError } = await supabase
+            .from("cashflow_units")
+            .update({ linked_asset_id: null })
+            .eq("linked_asset_id", id);
+          if (unlinkError) {
+            console.error("Supabase unlink asset error:", unlinkError);
+            return { success: false, message: `Gagal melepas tautan aset di database: ${unlinkError.message}` };
+          }
+        }
+
         const { error } = await supabase.from("assets").delete().eq("id", id);
         if (error) {
           console.error("Supabase delete asset error:", error);
@@ -510,6 +533,12 @@ export function useMasterData({ broadcastSync, getPeriodsMap, getTransactions }:
       }
     }
 
+    removeLocalAssetMeta(id);
+    if (guard.linkedUnitNames.length > 0) {
+      setCashflowUnits((prev) =>
+        prev.map((u) => (u.linked_asset_id === id ? { ...u, linked_asset_id: undefined } : u))
+      );
+    }
     setAssets((prev) => prev.filter((a) => a.id !== id));
     broadcastSync({ type: "MASTER_DATA_CHANGED" });
     return { success: true };

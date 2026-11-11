@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { Asset } from "@/types";
+import type { Asset, CashflowTransaction, CashflowUnit } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -91,6 +91,38 @@ export function computeAssetValues(asset: {
     total_value: main + inc,
     income_generated: inc,
     generating_rate: rate,
+  };
+}
+
+/**
+ * Check whether deleting an asset must be blocked because linked cashflow items
+ * have inflow transactions without any matching outflow/withdrawal transaction.
+ */
+export function getAssetDeletionBlocker(
+  assetId: string,
+  cashflowUnits: Pick<CashflowUnit, "id" | "name" | "linked_asset_id">[],
+  transactions: Pick<CashflowTransaction, "cashflow_unit_id" | "amount">[]
+): { blocked: boolean; inflowCount: number; outflowCount: number; linkedUnitNames: string[] } {
+  const linkedUnits = cashflowUnits.filter((u) => u.linked_asset_id === assetId);
+  if (linkedUnits.length === 0) {
+    return { blocked: false, inflowCount: 0, outflowCount: 0, linkedUnitNames: [] };
+  }
+
+  const linkedIds = new Set(linkedUnits.map((u) => u.id));
+  let inflowCount = 0;
+  let outflowCount = 0;
+
+  transactions.forEach((tx) => {
+    if (!linkedIds.has(tx.cashflow_unit_id)) return;
+    if (tx.amount > 0) inflowCount += 1;
+    else if (tx.amount < 0) outflowCount += 1;
+  });
+
+  return {
+    blocked: inflowCount > 0 && outflowCount === 0,
+    inflowCount,
+    outflowCount,
+    linkedUnitNames: linkedUnits.map((u) => u.name),
   };
 }
 
