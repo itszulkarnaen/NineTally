@@ -8,3 +8,4 @@ ALTER TABLE public.assets
   ADD COLUMN IF NOT EXISTS unit_name TEXT,
   ADD COLUMN IF NOT EXISTS unit_quantity NUMERIC(15, 4),
   ADD COLUMN IF NOT EXISTS price_per_unit NUMERIC(15, 2);
+
