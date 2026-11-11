@@ -311,3 +311,4 @@ export const SelfLoanMobileTab: React.FC<SelfLoanMobileTabProps> = ({ onShowToas
     </div>
   );
 };
+
