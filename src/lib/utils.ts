@@ -14,6 +14,34 @@ export function formatRupiah(amount: number): string {
   }).format(amount);
 }
 
+/** Parse localized decimal input supporting both '.' and ',' separators. */
+export function parseDecimalInput(raw: string): number {
+  const normalized = raw.trim().replace(",", ".");
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/** Allow typing decimal digits with a single '.' or ',' separator and optional leading '-'. */
+export function sanitizeDecimalInput(raw: string, allowNegative = false): string {
+  const cleaned = raw.replace(allowNegative ? /[^0-9.,-]/g : /[^0-9.,]/g, "");
+  let result = "";
+  let hasSeparator = false;
+  for (let i = 0; i < cleaned.length; i += 1) {
+    const ch = cleaned[i];
+    if (ch === "-") {
+      if (allowNegative && i === 0) result += ch;
+    } else if (ch === "." || ch === ",") {
+      if (!hasSeparator) {
+        hasSeparator = true;
+        result += ch;
+      }
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+}
+
 /** Check whether an asset tracks quantity by unit (e.g. gram for digital gold). */
 export function isUnitBasedAsset(
   asset: Pick<Asset, "unit_name" | "unit_quantity" | "price_per_unit">
@@ -54,7 +82,7 @@ export function computeAssetValues(asset: {
   const main = Number(asset.main_value) || 0;
   const inc = Number(asset.income_generated) || 0;
   const rate =
-    Number(asset.generating_rate) > 0
+    Number(asset.generating_rate) !== 0
       ? Number(asset.generating_rate)
       : main > 0 && inc !== 0
       ? Number(((inc / main) * 100).toFixed(2))

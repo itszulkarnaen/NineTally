@@ -2,7 +2,13 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
-import { formatRupiah, isUnitBasedAsset, computeAssetValues } from "@/lib/utils";
+import {
+  formatRupiah,
+  isUnitBasedAsset,
+  computeAssetValues,
+  parseDecimalInput,
+  sanitizeDecimalInput,
+} from "@/lib/utils";
 import { CurrencyInput } from "@/components/common/CurrencyInput";
 import {
   Plus,
@@ -53,7 +59,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
   const [newAssetIsGramMode, setNewAssetIsGramMode] = useState(false);
   const [newAssetMainValue, setNewAssetMainValue] = useState<number>(0);
   const [newAssetIncomeGen, setNewAssetIncomeGen] = useState<number>(0);
-  const [newAssetYield, setNewAssetYield] = useState<number>(0);
+  const [newAssetYield, setNewAssetYield] = useState<string>("0");
   const [newAssetGramQty, setNewAssetGramQty] = useState<string>("0");
   const [newAssetPricePerGram, setNewAssetPricePerGram] = useState<number>(0);
   const [newAssetBucket, setNewAssetBucket] = useState("");
@@ -63,6 +69,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
   // Edit asset modal state
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [editGramQtyInput, setEditGramQtyInput] = useState<string>("0");
+  const [editYieldInput, setEditYieldInput] = useState<string>("0");
   const [isSubmittingEditAsset, setIsSubmittingEditAsset] = useState(false);
 
   // Close modals on Escape
@@ -166,13 +173,15 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
   const openEditModal = (ast: Asset) => {
     setEditingAsset({ ...ast });
     setEditGramQtyInput(ast.unit_quantity !== undefined ? String(ast.unit_quantity) : "0");
+    setEditYieldInput(ast.generating_rate !== undefined ? String(ast.generating_rate) : "0");
   };
 
   const handleCreateAssetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAssetName.trim()) return;
 
-    const parsedGramQty = parseFloat(newAssetGramQty.replace(",", ".")) || 0;
+    const parsedGramQty = parseDecimalInput(newAssetGramQty);
+    const parsedYield = parseDecimalInput(newAssetYield);
 
     setIsSubmittingCreate(true);
     const res = await createAsset({
@@ -180,7 +189,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
       platform: newAssetPlatform.trim() || undefined,
       liquidity_tier: newAssetTier,
       main_value: newAssetMainValue,
-      generating_rate: newAssetYield,
+      generating_rate: parsedYield,
       income_generated: newAssetIsGramMode ? 0 : newAssetIncomeGen,
       unit_name: newAssetIsGramMode ? "gram" : undefined,
       unit_quantity: newAssetIsGramMode ? parsedGramQty : undefined,
@@ -204,7 +213,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
     setNewAssetIsGramMode(false);
     setNewAssetMainValue(0);
     setNewAssetIncomeGen(0);
-    setNewAssetYield(0);
+    setNewAssetYield("0");
     setNewAssetGramQty("0");
     setNewAssetPricePerGram(0);
     setNewAssetBucket("");
@@ -219,7 +228,8 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
     if (!editingAsset) return;
 
     const isGram = isUnitBasedAsset(editingAsset);
-    const parsedQty = parseFloat(editGramQtyInput.replace(",", ".")) || 0;
+    const parsedQty = parseDecimalInput(editGramQtyInput);
+    const parsedYield = parseDecimalInput(editYieldInput);
 
     setIsSubmittingEditAsset(true);
     const res = await updateAsset(editingAsset.id, {
@@ -227,7 +237,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
       platform: editingAsset.platform?.trim() || undefined,
       liquidity_tier: editingAsset.liquidity_tier,
       main_value: editingAsset.main_value,
-      generating_rate: editingAsset.generating_rate,
+      generating_rate: parsedYield,
       income_generated: editingAsset.income_generated,
       unit_name: isGram ? "gram" : undefined,
       unit_quantity: isGram ? parsedQty : undefined,
@@ -265,11 +275,12 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
 
   // Live preview in Create Modal
   const createPreview = useMemo(() => {
-    const qty = parseFloat(newAssetGramQty.replace(",", ".")) || 0;
+    const qty = parseDecimalInput(newAssetGramQty);
+    const yieldRate = parseDecimalInput(newAssetYield);
     return computeAssetValues({
       main_value: newAssetMainValue,
       income_generated: newAssetIncomeGen,
-      generating_rate: newAssetYield,
+      generating_rate: yieldRate,
       unit_name: newAssetIsGramMode ? "gram" : undefined,
       unit_quantity: qty,
       price_per_unit: newAssetPricePerGram,
@@ -286,16 +297,17 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
   // Live preview in Edit Modal
   const editPreview = useMemo(() => {
     if (!editingAsset) return null;
-    const qty = parseFloat(editGramQtyInput.replace(",", ".")) || 0;
+    const qty = parseDecimalInput(editGramQtyInput);
+    const yieldRate = parseDecimalInput(editYieldInput);
     return computeAssetValues({
       main_value: editingAsset.main_value,
       income_generated: editingAsset.income_generated,
-      generating_rate: editingAsset.generating_rate,
+      generating_rate: yieldRate,
       unit_name: editingAsset.unit_name,
       unit_quantity: qty,
       price_per_unit: editingAsset.price_per_unit,
     });
-  }, [editingAsset, editGramQtyInput]);
+  }, [editingAsset, editGramQtyInput, editYieldInput]);
 
   return (
     <div className="space-y-5">
@@ -644,12 +656,11 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
                     <div>
                       <label className="text-[#666E61] block mb-1 font-medium">Gramasi (gram)</label>
                       <input
-                        type="number"
-                        step="0.0001"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="e.g. 3.5"
                         value={newAssetGramQty}
-                        onChange={(e) => setNewAssetGramQty(e.target.value)}
+                        onChange={(e) => setNewAssetGramQty(sanitizeDecimalInput(e.target.value))}
                         className="w-full bg-[#FFFFFF] border border-amber-200 rounded-xl px-3 py-2 text-xs font-bold text-[#242921]"
                       />
                     </div>
@@ -719,11 +730,11 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
                   <div>
                     <label className="text-[#666E61] block mb-1 font-medium">Yield / Return (%)</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="e.g. 5.5"
                       value={newAssetYield}
-                      onChange={(e) => setNewAssetYield(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => setNewAssetYield(sanitizeDecimalInput(e.target.value, true))}
                       className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                     />
                   </div>
@@ -881,11 +892,11 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
                     <div>
                       <label className="text-[#666E61] block mb-1 font-medium">Gramasi (gram)</label>
                       <input
-                        type="number"
-                        step="0.0001"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="e.g. 3.5"
                         value={editGramQtyInput}
-                        onChange={(e) => setEditGramQtyInput(e.target.value)}
+                        onChange={(e) => setEditGramQtyInput(sanitizeDecimalInput(e.target.value))}
                         className="w-full bg-[#FFFFFF] border border-amber-200 rounded-xl px-3 py-2 text-xs font-bold text-[#242921]"
                       />
                     </div>
@@ -977,15 +988,11 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
                   <div>
                     <label className="text-[#666E61] block mb-1 font-medium">Yield / Return (%)</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={editingAsset.generating_rate}
-                      onChange={(e) =>
-                        setEditingAsset({
-                          ...editingAsset,
-                          generating_rate: parseFloat(e.target.value) || 0,
-                        })
-                      }
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="e.g. 5.5"
+                      value={editYieldInput}
+                      onChange={(e) => setEditYieldInput(sanitizeDecimalInput(e.target.value, true))}
                       className="w-full bg-[#E3F2FD]/30 border border-[#EEEEEE] rounded-xl px-3 py-2 text-xs text-[#242921]"
                     />
                   </div>
