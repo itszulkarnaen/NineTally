@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useRef } from "react";
+import React, { createContext, useContext, useEffect, useRef } from "react";
 import { AppContextType } from "./types";
 import { availableMonths } from "./constants";
+import { isUnitBasedAsset } from "@/lib/utils";
 import { useMasterData } from "./hooks/useMasterData";
 import { useBudgetPeriods } from "./hooks/useBudgetPeriods";
 import { useTransactions } from "./hooks/useTransactions";
@@ -77,6 +78,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Connect broadcastSync to cloudSync
   broadcastSyncRef.current = cloudSync.broadcastSync;
+
+  // Keep latest assets & updateAsset in refs so background gold auto-sync never cancels on unrelated re-renders
+  const latestAssetsRef = useRef(masterData.assets);
+  const updateAssetRef = useRef(masterData.updateAsset);
+  useEffect(() => {
+    latestAssetsRef.current = masterData.assets;
+    updateAssetRef.current = masterData.updateAsset;
+  }, [masterData.assets, masterData.updateAsset]);
+
+  // Auto-sync live gold price once cloud/local assets are loaded (throttled every 15 mins)
+  const hasAutoSyncedGoldRef = useRef(false);
+  useEffect(() => {
+    if (!cloudSync.isLoaded || cloudSync.cloudSyncStatus === "CONNECTING") return;
+    if (hasAutoSyncedGoldRef.current) return;
+
+    const gramAssets = latestAssetsRef.current.filter(
+      (a) => isUnitBasedAsset(a) && a.unit_name?.toLowerCase() === "gram"
+    );
+    if (gramAssets.length === 0) return;
+
+    const GOLD_SYNC_INTERVAL_MS = 15 * 60 * 1000;
+    let lastSyncedAt = 0;
+    try {
+      lastSyncedAt = Number(localStorage.getItem("scf_gold_last_sync_at") || 0);
+    } catch {
+      lastSyncedAt = 0;
+    }
+
+    const needsInitialPrice = gramAssets.some((a) => !a.price_per_unit || a.price_per_unit <= 0);
+    if (!needsInitialPrice && Date.now() - lastSyncedAt < GOLD_SYNC_INTERVAL_MS) {
+      hasAutoSyncedGoldRef.current = true;
+      return;
+    }
+
+    hasAutoSyncedGoldRef.current = true;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/gold-price");
+        if (!res.ok) return;
+        const data = await res.json();
+        const pricePerGram = Number(data?.pricePerGramIdr);
+        if (!pricePerGram || pricePerGram <= 0) return;
+
+        try {
+          localStorage.setItem("scf_gold_last_sync_at", String(Date.now()));
+        } catch {
+          // ignore localStorage write failures
+        }
+
+        const currentGramAssets = latestAssetsRef.current.filter(
+          (a) => isUnitBasedAsset(a) && a.unit_name?.toLowerCase() === "gram"
+        );
+        for (const ast of currentGramAssets) {
+          if (ast.price_per_unit !== pricePerGram) {
+            await updateAssetRef.current(ast.id, { price_per_unit: pricePerGram });
+          }
+        }
+      } catch {
+        // Silent background failure when offline or endpoint temporarily unavailable
+      }
+    })();
+  }, [cloudSync.isLoaded, cloudSync.cloudSyncStatus]);
 
   const value: AppContextType = {
     // Data

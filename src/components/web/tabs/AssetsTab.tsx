@@ -166,6 +166,12 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({
       });
     }
 
+    try {
+      localStorage.setItem("scf_gold_last_sync_at", String(Date.now()));
+    } catch {
+      // ignore localStorage write failures
+    }
+
     setToast(
       `Harga emas disinkronkan: ${formatRupiah(quote.pricePerGramIdr)}/gr (${quote.source})`
     );
